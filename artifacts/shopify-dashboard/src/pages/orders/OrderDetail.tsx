@@ -10,6 +10,7 @@ import { PaymentStatusBadge, FulfillmentStatusBadge } from "@/components/orders/
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/format";
 import { ArrowLeft, ExternalLink, MapPin, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { WhatsAppChat } from "@/components/orders/WhatsAppChat";
 
 function verbToLabel(verb: string, args: string[]): string {
   const map: Record<string, string> = {
@@ -342,6 +343,13 @@ export default function OrderDetail() {
               )}
             </CardContent>
           </Card>
+
+          {/* WhatsApp Chat */}
+          <WhatsAppChat
+            customerName={customerName}
+            customerPhone={order.customer?.phone ?? order.shipping_address?.phone}
+            orderName={order.name}
+          />
 
           {/* Customer */}
           <Card className="shadow-sm border-gray-200">
