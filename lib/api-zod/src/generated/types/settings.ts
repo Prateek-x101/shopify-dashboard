@@ -6,6 +6,9 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface HealthStatus {
-  status: string;
+export interface Settings {
+  store_url: string;
+  api_configured: boolean;
+  /** @nullable */
+  store_name?: string | null;
 }

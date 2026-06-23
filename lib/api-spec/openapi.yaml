@@ -1,22 +1,24 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Shopify Orders Dashboard API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: orders
+    description: Shopify order operations
+  - name: settings
+    description: Settings operations
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +26,110 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /orders:
+    get:
+      operationId: listOrders
+      tags: [orders]
+      summary: List Shopify orders
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: page_info
+          in: query
+          schema:
+            type: ["string", "null"]
+        - name: status
+          in: query
+          schema:
+            type: ["string", "null"]
+        - name: financial_status
+          in: query
+          schema:
+            type: ["string", "null"]
+        - name: fulfillment_status
+          in: query
+          schema:
+            type: ["string", "null"]
+        - name: query
+          in: query
+          schema:
+            type: ["string", "null"]
+      responses:
+        "200":
+          description: List of orders
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderListResponse"
+
+  /orders/{id}:
+    get:
+      operationId: getOrder
+      tags: [orders]
+      summary: Get a single Shopify order
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Order detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+        "404":
+          description: Order not found
+
+  /orders/summary:
+    get:
+      operationId: getOrdersSummary
+      tags: [orders]
+      summary: Get orders summary stats for today
+      responses:
+        "200":
+          description: Orders summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrdersSummary"
+
+  /settings:
+    get:
+      operationId: getSettings
+      tags: [settings]
+      summary: Get current settings
+      responses:
+        "200":
+          description: Settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Settings"
+    put:
+      operationId: updateSettings
+      tags: [settings]
+      summary: Update settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SettingsInput"
+      responses:
+        "200":
+          description: Updated settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Settings"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +140,184 @@ components:
       required:
         - status
 
+    OrderAddress:
+      type: object
+      properties:
+        first_name:
+          type: ["string", "null"]
+        last_name:
+          type: ["string", "null"]
+        address1:
+          type: ["string", "null"]
+        city:
+          type: ["string", "null"]
+        province:
+          type: ["string", "null"]
+        country:
+          type: ["string", "null"]
+        zip:
+          type: ["string", "null"]
+        phone:
+          type: ["string", "null"]
+        name:
+          type: ["string", "null"]
+
+    LineItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        quantity:
+          type: integer
+        price:
+          type: string
+        variant_title:
+          type: ["string", "null"]
+        sku:
+          type: ["string", "null"]
+        fulfillment_status:
+          type: ["string", "null"]
+        image_url:
+          type: ["string", "null"]
+      required:
+        - id
+        - title
+        - quantity
+        - price
+
+    Customer:
+      type: object
+      properties:
+        id:
+          type: integer
+        first_name:
+          type: ["string", "null"]
+        last_name:
+          type: ["string", "null"]
+        email:
+          type: ["string", "null"]
+        phone:
+          type: ["string", "null"]
+        orders_count:
+          type: integer
+      required:
+        - id
+
+    Order:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        created_at:
+          type: string
+        updated_at:
+          type: string
+        financial_status:
+          type: ["string", "null"]
+        fulfillment_status:
+          type: ["string", "null"]
+        total_price:
+          type: string
+        subtotal_price:
+          type: string
+        total_discounts:
+          type: string
+        total_shipping_price:
+          type: string
+        currency:
+          type: string
+        customer:
+          $ref: "#/components/schemas/Customer"
+        shipping_address:
+          $ref: "#/components/schemas/OrderAddress"
+        billing_address:
+          $ref: "#/components/schemas/OrderAddress"
+        line_items:
+          type: array
+          items:
+            $ref: "#/components/schemas/LineItem"
+        channel:
+          type: ["string", "null"]
+        note:
+          type: ["string", "null"]
+        tags:
+          type: string
+        payment_gateway:
+          type: ["string", "null"]
+      required:
+        - id
+        - name
+        - created_at
+        - total_price
+        - currency
+        - line_items
+
+    OrderListResponse:
+      type: object
+      properties:
+        orders:
+          type: array
+          items:
+            $ref: "#/components/schemas/Order"
+        page_info:
+          type: object
+          properties:
+            has_next_page:
+              type: boolean
+            has_previous_page:
+              type: boolean
+            next_cursor:
+              type: ["string", "null"]
+            previous_cursor:
+              type: ["string", "null"]
+      required:
+        - orders
+
+    OrdersSummary:
+      type: object
+      properties:
+        total_orders_today:
+          type: integer
+        total_orders_change_pct:
+          type: number
+        items_ordered_today:
+          type: integer
+        items_change_pct:
+          type: number
+        returns_today:
+          type: integer
+        orders_fulfilled_today:
+          type: integer
+        orders_delivered_today:
+          type: integer
+      required:
+        - total_orders_today
+        - items_ordered_today
+        - returns_today
+        - orders_fulfilled_today
+        - orders_delivered_today
+
+    Settings:
+      type: object
+      properties:
+        store_url:
+          type: string
+        api_configured:
+          type: boolean
+        store_name:
+          type: ["string", "null"]
+      required:
+        - store_url
+        - api_configured
+
+    SettingsInput:
+      type: object
+      properties:
+        store_url:
+          type: string
+      required:
+        - store_url
