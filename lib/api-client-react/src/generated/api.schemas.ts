@@ -109,6 +109,27 @@ export interface OrdersSummary {
   orders_delivered_today: number;
 }
 
+export interface OrderEvent {
+  id: number;
+  subject_type?: string;
+  subject_id?: number;
+  verb: string;
+  /** @nullable */
+  body?: string | null;
+  /** @nullable */
+  message?: string | null;
+  /** @nullable */
+  author?: string | null;
+  /** @nullable */
+  description?: string | null;
+  created_at: string;
+  arguments?: string[];
+}
+
+export interface OrderEventsResponse {
+  events: OrderEvent[];
+}
+
 export interface Settings {
   store_url: string;
   api_configured: boolean;

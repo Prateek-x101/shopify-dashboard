@@ -87,6 +87,25 @@ paths:
         "404":
           description: Order not found
 
+  /orders/{id}/events:
+    get:
+      operationId: getOrderEvents
+      tags: [orders]
+      summary: Get Shopify events (timeline) for an order
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of events
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderEventsResponse"
+
   /orders/summary:
     get:
       operationId: getOrdersSummary
@@ -300,6 +319,46 @@ components:
         - returns_today
         - orders_fulfilled_today
         - orders_delivered_today
+
+    OrderEvent:
+      type: object
+      properties:
+        id:
+          type: integer
+        subject_type:
+          type: string
+        subject_id:
+          type: integer
+        verb:
+          type: string
+        body:
+          type: ["string", "null"]
+        message:
+          type: ["string", "null"]
+        author:
+          type: ["string", "null"]
+        description:
+          type: ["string", "null"]
+        created_at:
+          type: string
+        arguments:
+          type: array
+          items:
+            type: string
+      required:
+        - id
+        - verb
+        - created_at
+
+    OrderEventsResponse:
+      type: object
+      properties:
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderEvent"
+      required:
+        - events
 
     Settings:
       type: object

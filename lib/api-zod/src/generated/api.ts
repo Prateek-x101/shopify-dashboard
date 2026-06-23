@@ -164,6 +164,29 @@ export const GetOrderResponse = zod.object({
 
 
 /**
+ * @summary Get Shopify events (timeline) for an order
+ */
+export const GetOrderEventsParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const GetOrderEventsResponse = zod.object({
+  "events": zod.array(zod.object({
+  "id": zod.number(),
+  "subject_type": zod.string().optional(),
+  "subject_id": zod.number().optional(),
+  "verb": zod.string(),
+  "body": zod.string().nullish(),
+  "message": zod.string().nullish(),
+  "author": zod.string().nullish(),
+  "description": zod.string().nullish(),
+  "created_at": zod.string(),
+  "arguments": zod.array(zod.string()).optional()
+}))
+})
+
+
+/**
  * @summary Get orders summary stats for today
  */
 export const GetOrdersSummaryResponse = zod.object({

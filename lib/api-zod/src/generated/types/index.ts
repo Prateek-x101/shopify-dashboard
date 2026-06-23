@@ -12,6 +12,8 @@ export * from './lineItem';
 export * from './listOrdersParams';
 export * from './order';
 export * from './orderAddress';
+export * from './orderEvent';
+export * from './orderEventsResponse';
 export * from './orderListResponse';
 export * from './orderListResponsePageInfo';
 export * from './ordersSummary';

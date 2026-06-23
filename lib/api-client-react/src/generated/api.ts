@@ -23,6 +23,7 @@ import type {
   HealthStatus,
   ListOrdersParams,
   Order,
+  OrderEventsResponse,
   OrderListResponse,
   OrdersSummary,
   Settings,
@@ -267,6 +268,83 @@ export function useGetOrder<TData = Awaited<ReturnType<typeof getOrder>>, TError
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetOrderQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetOrderEventsUrl = (id: string,) => {
+
+
+
+
+  return `/api/orders/${id}/events`
+}
+
+/**
+ * @summary Get Shopify events (timeline) for an order
+ */
+export const getOrderEvents = async (id: string, options?: RequestInit): Promise<OrderEventsResponse> => {
+
+  return customFetch<OrderEventsResponse>(getGetOrderEventsUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetOrderEventsQueryKey = (id: string,) => {
+    return [
+    `/api/orders/${id}/events`
+    ] as const;
+    }
+
+
+export const getGetOrderEventsQueryOptions = <TData = Awaited<ReturnType<typeof getOrderEvents>>, TError = ErrorType<unknown>>(id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOrderEvents>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetOrderEventsQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getOrderEvents>>> = ({ signal }) => getOrderEvents(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getOrderEvents>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetOrderEventsQueryResult = NonNullable<Awaited<ReturnType<typeof getOrderEvents>>>
+export type GetOrderEventsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get Shopify events (timeline) for an order
+ */
+
+export function useGetOrderEvents<TData = Awaited<ReturnType<typeof getOrderEvents>>, TError = ErrorType<unknown>>(
+ id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOrderEvents>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetOrderEventsQueryOptions(id,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
