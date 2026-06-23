@@ -1,8 +1,12 @@
 import { Router } from "express";
+import { Client, LocalAuth } from "whatsapp-web.js";
 import QRCode from "qrcode";
 import { CreateWhatsappRuleBody, ToggleWhatsappRuleBody } from "@workspace/api-zod";
 
 const router = Router();
+
+// ── Chromium path (Nix-installed) ──────────────────────────────
+const CHROMIUM_PATH = "/nix/store/qa9cnw4v5xkxyip6mb9kxqfq1z4x2dx1-chromium-138.0.7204.100/bin/chromium";
 
 // ── In-memory state ──────────────────────────────────────────────
 interface Rule {
@@ -15,11 +19,80 @@ interface Rule {
   created_at: string;
 }
 
-let waState: "disconnected" | "qr_ready" | "connected" = "disconnected";
+type WaState = "disconnected" | "qr_ready" | "connected" | "initializing";
+
+let waState: WaState = "disconnected";
 let waPhoneNumber: string | null = null;
 let waQrDataUrl: string | null = null;
+let waClient: Client | null = null;
 const rules: Rule[] = [];
 let ruleCounter = 1;
+
+// ── WhatsApp Client factory ───────────────────────────────────────
+async function startWhatsAppClient() {
+  if (waClient) {
+    try { await waClient.destroy(); } catch {}
+    waClient = null;
+  }
+
+  waState = "initializing";
+  waQrDataUrl = null;
+  waPhoneNumber = null;
+
+  const client = new Client({
+    authStrategy: new LocalAuth({ dataPath: "/tmp/.wwebjs_auth" }),
+    puppeteer: {
+      executablePath: CHROMIUM_PATH,
+      headless: true,
+      args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage",
+        "--disable-gpu",
+        "--no-first-run",
+        "--no-zygote",
+        "--single-process",
+        "--disable-extensions",
+      ],
+    },
+  });
+
+  client.on("qr", async (qr: string) => {
+    waQrDataUrl = await QRCode.toDataURL(qr, { width: 256, margin: 1 });
+    waState = "qr_ready";
+  });
+
+  client.on("authenticated", () => {
+    waState = "initializing";
+  });
+
+  client.on("ready", () => {
+    waState = "connected";
+    const info = client.info;
+    waPhoneNumber = info?.wid?.user ? `+${info.wid.user}` : "Connected";
+    waQrDataUrl = null;
+  });
+
+  client.on("auth_failure", () => {
+    waState = "disconnected";
+    waQrDataUrl = null;
+    waPhoneNumber = null;
+    waClient = null;
+  });
+
+  client.on("disconnected", () => {
+    waState = "disconnected";
+    waQrDataUrl = null;
+    waPhoneNumber = null;
+    waClient = null;
+  });
+
+  waClient = client;
+  client.initialize().catch(() => {
+    waState = "disconnected";
+    waClient = null;
+  });
+}
 
 // ── All Shopify trigger statuses ─────────────────────────────────
 const SHOPIFY_STATUSES = [
@@ -48,17 +121,6 @@ const SHOPIFY_STATUSES = [
   { id: "delivery_failed",       label: "Delivery Failed",          type: "shipping",    emoji: "⚠️",  description: "Delivery failed / returned" },
 ];
 
-// ── Default message templates ─────────────────────────────────────
-const DEFAULT_TEMPLATES: Record<string, string> = {
-  order_placed:        "Hi {customer_name}! 🛒 Thank you for your order {order_name} worth {total}. We'll confirm it shortly!",
-  payment_confirmed:   "Hi {customer_name}! 💰 Payment confirmed for order {order_name} ({total}). We're preparing your order now.",
-  order_shipped:       "Hi {customer_name}! 🚚 Your order {order_name} has been shipped! Track here: {tracking_url}",
-  out_for_delivery:    "Hi {customer_name}! 🏍️ Your order {order_name} is out for delivery today. Be ready!",
-  delivered:           "Hi {customer_name}! 🎉 Your order {order_name} has been delivered. Enjoy! Need help? Reply here.",
-  order_cancelled:     "Hi {customer_name}! ❌ Your order {order_name} has been cancelled. Refund (if any) in 5-7 days.",
-  attempted_delivery:  "Hi {customer_name}! 🔔 We tried delivering order {order_name} but couldn't reach you. We'll retry tomorrow.",
-};
-
 // ── Routes ────────────────────────────────────────────────────────
 
 router.get("/whatsapp/shopify-statuses", (_req, res) => {
@@ -79,21 +141,34 @@ router.post("/whatsapp/connect", async (_req, res) => {
     res.json({ connected: true, phone_number: waPhoneNumber, qr_data_url: null, state: "connected" });
     return;
   }
+  if (waState === "initializing") {
+    res.json({ connected: false, phone_number: null, qr_data_url: waQrDataUrl, state: waState });
+    return;
+  }
 
-  // Generate a placeholder QR code (whatsapp-web.js will replace this with real QR when running on a full server with Chromium)
-  const qrPayload = `WA_CONNECT_${Date.now()}_PLACEHOLDER`;
-  waQrDataUrl = await QRCode.toDataURL(qrPayload, { width: 256, margin: 1 });
-  waState = "qr_ready";
+  // Fire off the client — QR will arrive asynchronously via event
+  startWhatsAppClient().catch(() => {});
+
+  // Wait up to 15s for first QR to appear
+  const deadline = Date.now() + 15_000;
+  while (Date.now() < deadline) {
+    if (waState === "qr_ready" || waState === "connected") break;
+    await new Promise((r) => setTimeout(r, 500));
+  }
 
   res.json({
-    connected: false,
-    phone_number: null,
+    connected: waState === "connected",
+    phone_number: waPhoneNumber,
     qr_data_url: waQrDataUrl,
-    state: "qr_ready",
+    state: waState,
   });
 });
 
-router.post("/whatsapp/disconnect", (_req, res) => {
+router.post("/whatsapp/disconnect", async (_req, res) => {
+  if (waClient) {
+    try { await waClient.destroy(); } catch {}
+    waClient = null;
+  }
   waState = "disconnected";
   waPhoneNumber = null;
   waQrDataUrl = null;
@@ -107,7 +182,7 @@ router.get("/whatsapp/rules", (_req, res) => {
 });
 
 router.post("/whatsapp/rules", (req, res) => {
-  const parsed = CreateWhatsAppRuleBody.safeParse(req.body);
+  const parsed = CreateWhatsappRuleBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid body" });
     return;

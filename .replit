@@ -23,3 +23,6 @@ timeoutMs = 20000
 
 [userenv.shared]
 SHOPIFY_STORE_URL = "fccevc-p1.myshopify.com"
+
+[nix]
+channel = "stable-25_05"
