@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "Shopify Orders Dashboard"
+version = "1.0.0"
+id = "artifacts/shopify-dashboard"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 18124
+
+[services.development]
+run = "pnpm --filter @workspace/shopify-dashboard run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/shopify-dashboard", "run", "build" ]
+publicDir = "artifacts/shopify-dashboard/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "18124"
+BASE_PATH = "/"
