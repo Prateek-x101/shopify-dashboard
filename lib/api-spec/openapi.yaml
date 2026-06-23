@@ -119,6 +119,126 @@ paths:
               schema:
                 $ref: "#/components/schemas/OrdersSummary"
 
+  /whatsapp/status:
+    get:
+      operationId: getWhatsappStatus
+      tags: [whatsapp]
+      summary: Get WhatsApp connection status and QR code
+      responses:
+        "200":
+          description: WhatsApp status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WhatsAppStatus"
+
+  /whatsapp/connect:
+    post:
+      operationId: connectWhatsapp
+      tags: [whatsapp]
+      summary: Initialize WhatsApp Web connection (generates QR)
+      responses:
+        "200":
+          description: Connection initiated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WhatsAppStatus"
+
+  /whatsapp/disconnect:
+    post:
+      operationId: disconnectWhatsapp
+      tags: [whatsapp]
+      summary: Disconnect WhatsApp Web session
+      responses:
+        "200":
+          description: Disconnected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WhatsAppStatus"
+
+  /whatsapp/rules:
+    get:
+      operationId: listWhatsappRules
+      tags: [whatsapp]
+      summary: List all automation rules
+      responses:
+        "200":
+          description: Rules list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WhatsAppRulesResponse"
+    post:
+      operationId: createWhatsappRule
+      tags: [whatsapp]
+      summary: Create a new automation rule
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateWhatsAppRuleBody"
+      responses:
+        "201":
+          description: Rule created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WhatsAppRule"
+
+  /whatsapp/rules/{id}:
+    delete:
+      operationId: deleteWhatsappRule
+      tags: [whatsapp]
+      summary: Delete a rule
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Deleted
+    patch:
+      operationId: toggleWhatsappRule
+      tags: [whatsapp]
+      summary: Toggle rule enabled/disabled
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ToggleRuleBody"
+      responses:
+        "200":
+          description: Updated rule
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WhatsAppRule"
+
+  /whatsapp/shopify-statuses:
+    get:
+      operationId: getShopifyStatuses
+      tags: [whatsapp]
+      summary: Get all Shopify trigger statuses
+      responses:
+        "200":
+          description: Shopify statuses
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShopifyStatusesResponse"
+
   /settings:
     get:
       operationId: getSettings
@@ -359,6 +479,109 @@ components:
             $ref: "#/components/schemas/OrderEvent"
       required:
         - events
+
+    ToggleRuleBody:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+      required:
+        - enabled
+
+    WhatsAppStatus:
+      type: object
+      properties:
+        connected:
+          type: boolean
+        phone_number:
+          type: ["string", "null"]
+        qr_data_url:
+          type: ["string", "null"]
+        state:
+          type: string
+      required:
+        - connected
+        - state
+
+    WhatsAppRule:
+      type: object
+      properties:
+        id:
+          type: string
+        trigger_type:
+          type: string
+        trigger_status:
+          type: string
+        trigger_label:
+          type: string
+        message_template:
+          type: string
+        enabled:
+          type: boolean
+        created_at:
+          type: string
+      required:
+        - id
+        - trigger_type
+        - trigger_status
+        - trigger_label
+        - message_template
+        - enabled
+        - created_at
+
+    CreateWhatsAppRuleBody:
+      type: object
+      properties:
+        trigger_type:
+          type: string
+        trigger_status:
+          type: string
+        message_template:
+          type: string
+      required:
+        - trigger_type
+        - trigger_status
+        - message_template
+
+    WhatsAppRulesResponse:
+      type: object
+      properties:
+        rules:
+          type: array
+          items:
+            $ref: "#/components/schemas/WhatsAppRule"
+      required:
+        - rules
+
+    ShopifyStatus:
+      type: object
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        type:
+          type: string
+        description:
+          type: string
+        emoji:
+          type: string
+      required:
+        - id
+        - label
+        - type
+        - description
+        - emoji
+
+    ShopifyStatusesResponse:
+      type: object
+      properties:
+        statuses:
+          type: array
+          items:
+            $ref: "#/components/schemas/ShopifyStatus"
+      required:
+        - statuses
 
     Settings:
       type: object

@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './createWhatsAppRuleBody';
 export * from './customer';
 export * from './healthStatus';
 export * from './lineItem';
@@ -19,3 +20,9 @@ export * from './orderListResponsePageInfo';
 export * from './ordersSummary';
 export * from './settings';
 export * from './settingsInput';
+export * from './shopifyStatus';
+export * from './shopifyStatusesResponse';
+export * from './toggleRuleBody';
+export * from './whatsAppRule';
+export * from './whatsAppRulesResponse';
+export * from './whatsAppStatus';

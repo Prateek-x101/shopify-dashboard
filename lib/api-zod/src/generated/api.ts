@@ -201,6 +201,109 @@ export const GetOrdersSummaryResponse = zod.object({
 
 
 /**
+ * @summary Get WhatsApp connection status and QR code
+ */
+export const GetWhatsappStatusResponse = zod.object({
+  "connected": zod.boolean(),
+  "phone_number": zod.string().nullish(),
+  "qr_data_url": zod.string().nullish(),
+  "state": zod.string()
+})
+
+
+/**
+ * @summary Initialize WhatsApp Web connection (generates QR)
+ */
+export const ConnectWhatsappResponse = zod.object({
+  "connected": zod.boolean(),
+  "phone_number": zod.string().nullish(),
+  "qr_data_url": zod.string().nullish(),
+  "state": zod.string()
+})
+
+
+/**
+ * @summary Disconnect WhatsApp Web session
+ */
+export const DisconnectWhatsappResponse = zod.object({
+  "connected": zod.boolean(),
+  "phone_number": zod.string().nullish(),
+  "qr_data_url": zod.string().nullish(),
+  "state": zod.string()
+})
+
+
+/**
+ * @summary List all automation rules
+ */
+export const ListWhatsappRulesResponse = zod.object({
+  "rules": zod.array(zod.object({
+  "id": zod.string(),
+  "trigger_type": zod.string(),
+  "trigger_status": zod.string(),
+  "trigger_label": zod.string(),
+  "message_template": zod.string(),
+  "enabled": zod.boolean(),
+  "created_at": zod.string()
+}))
+})
+
+
+/**
+ * @summary Create a new automation rule
+ */
+export const CreateWhatsappRuleBody = zod.object({
+  "trigger_type": zod.string(),
+  "trigger_status": zod.string(),
+  "message_template": zod.string()
+})
+
+
+/**
+ * @summary Delete a rule
+ */
+export const DeleteWhatsappRuleParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+
+/**
+ * @summary Toggle rule enabled/disabled
+ */
+export const ToggleWhatsappRuleParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const ToggleWhatsappRuleBody = zod.object({
+  "enabled": zod.boolean()
+})
+
+export const ToggleWhatsappRuleResponse = zod.object({
+  "id": zod.string(),
+  "trigger_type": zod.string(),
+  "trigger_status": zod.string(),
+  "trigger_label": zod.string(),
+  "message_template": zod.string(),
+  "enabled": zod.boolean(),
+  "created_at": zod.string()
+})
+
+
+/**
+ * @summary Get all Shopify trigger statuses
+ */
+export const GetShopifyStatusesResponse = zod.object({
+  "statuses": zod.array(zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "type": zod.string(),
+  "description": zod.string(),
+  "emoji": zod.string()
+}))
+})
+
+
+/**
  * @summary Get current settings
  */
 export const GetSettingsResponse = zod.object({

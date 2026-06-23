@@ -130,6 +130,51 @@ export interface OrderEventsResponse {
   events: OrderEvent[];
 }
 
+export interface ToggleRuleBody {
+  enabled: boolean;
+}
+
+export interface WhatsAppStatus {
+  connected: boolean;
+  /** @nullable */
+  phone_number?: string | null;
+  /** @nullable */
+  qr_data_url?: string | null;
+  state: string;
+}
+
+export interface WhatsAppRule {
+  id: string;
+  trigger_type: string;
+  trigger_status: string;
+  trigger_label: string;
+  message_template: string;
+  enabled: boolean;
+  created_at: string;
+}
+
+export interface CreateWhatsAppRuleBody {
+  trigger_type: string;
+  trigger_status: string;
+  message_template: string;
+}
+
+export interface WhatsAppRulesResponse {
+  rules: WhatsAppRule[];
+}
+
+export interface ShopifyStatus {
+  id: string;
+  label: string;
+  type: string;
+  description: string;
+  emoji: string;
+}
+
+export interface ShopifyStatusesResponse {
+  statuses: ShopifyStatus[];
+}
+
 export interface Settings {
   store_url: string;
   api_configured: boolean;

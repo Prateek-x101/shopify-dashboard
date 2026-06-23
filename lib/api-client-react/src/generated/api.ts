@@ -20,6 +20,7 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  CreateWhatsAppRuleBody,
   HealthStatus,
   ListOrdersParams,
   Order,
@@ -27,7 +28,12 @@ import type {
   OrderListResponse,
   OrdersSummary,
   Settings,
-  SettingsInput
+  SettingsInput,
+  ShopifyStatusesResponse,
+  ToggleRuleBody,
+  WhatsAppRule,
+  WhatsAppRulesResponse,
+  WhatsAppStatus
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -422,6 +428,590 @@ export function useGetOrdersSummary<TData = Awaited<ReturnType<typeof getOrdersS
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetOrdersSummaryQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetWhatsappStatusUrl = () => {
+
+
+
+
+  return `/api/whatsapp/status`
+}
+
+/**
+ * @summary Get WhatsApp connection status and QR code
+ */
+export const getWhatsappStatus = async ( options?: RequestInit): Promise<WhatsAppStatus> => {
+
+  return customFetch<WhatsAppStatus>(getGetWhatsappStatusUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetWhatsappStatusQueryKey = () => {
+    return [
+    `/api/whatsapp/status`
+    ] as const;
+    }
+
+
+export const getGetWhatsappStatusQueryOptions = <TData = Awaited<ReturnType<typeof getWhatsappStatus>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getWhatsappStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetWhatsappStatusQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getWhatsappStatus>>> = ({ signal }) => getWhatsappStatus({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getWhatsappStatus>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetWhatsappStatusQueryResult = NonNullable<Awaited<ReturnType<typeof getWhatsappStatus>>>
+export type GetWhatsappStatusQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get WhatsApp connection status and QR code
+ */
+
+export function useGetWhatsappStatus<TData = Awaited<ReturnType<typeof getWhatsappStatus>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getWhatsappStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetWhatsappStatusQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getConnectWhatsappUrl = () => {
+
+
+
+
+  return `/api/whatsapp/connect`
+}
+
+/**
+ * @summary Initialize WhatsApp Web connection (generates QR)
+ */
+export const connectWhatsapp = async ( options?: RequestInit): Promise<WhatsAppStatus> => {
+
+  return customFetch<WhatsAppStatus>(getConnectWhatsappUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getConnectWhatsappMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof connectWhatsapp>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof connectWhatsapp>>, TError,void, TContext> => {
+
+const mutationKey = ['connectWhatsapp'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof connectWhatsapp>>, void> = () => {
+
+
+          return  connectWhatsapp(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ConnectWhatsappMutationResult = NonNullable<Awaited<ReturnType<typeof connectWhatsapp>>>
+
+    export type ConnectWhatsappMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Initialize WhatsApp Web connection (generates QR)
+ */
+export const useConnectWhatsapp = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof connectWhatsapp>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof connectWhatsapp>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getConnectWhatsappMutationOptions(options));
+    }
+
+export const getDisconnectWhatsappUrl = () => {
+
+
+
+
+  return `/api/whatsapp/disconnect`
+}
+
+/**
+ * @summary Disconnect WhatsApp Web session
+ */
+export const disconnectWhatsapp = async ( options?: RequestInit): Promise<WhatsAppStatus> => {
+
+  return customFetch<WhatsAppStatus>(getDisconnectWhatsappUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getDisconnectWhatsappMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof disconnectWhatsapp>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof disconnectWhatsapp>>, TError,void, TContext> => {
+
+const mutationKey = ['disconnectWhatsapp'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof disconnectWhatsapp>>, void> = () => {
+
+
+          return  disconnectWhatsapp(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DisconnectWhatsappMutationResult = NonNullable<Awaited<ReturnType<typeof disconnectWhatsapp>>>
+
+    export type DisconnectWhatsappMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Disconnect WhatsApp Web session
+ */
+export const useDisconnectWhatsapp = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof disconnectWhatsapp>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof disconnectWhatsapp>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getDisconnectWhatsappMutationOptions(options));
+    }
+
+export const getListWhatsappRulesUrl = () => {
+
+
+
+
+  return `/api/whatsapp/rules`
+}
+
+/**
+ * @summary List all automation rules
+ */
+export const listWhatsappRules = async ( options?: RequestInit): Promise<WhatsAppRulesResponse> => {
+
+  return customFetch<WhatsAppRulesResponse>(getListWhatsappRulesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListWhatsappRulesQueryKey = () => {
+    return [
+    `/api/whatsapp/rules`
+    ] as const;
+    }
+
+
+export const getListWhatsappRulesQueryOptions = <TData = Awaited<ReturnType<typeof listWhatsappRules>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listWhatsappRules>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListWhatsappRulesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listWhatsappRules>>> = ({ signal }) => listWhatsappRules({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listWhatsappRules>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListWhatsappRulesQueryResult = NonNullable<Awaited<ReturnType<typeof listWhatsappRules>>>
+export type ListWhatsappRulesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List all automation rules
+ */
+
+export function useListWhatsappRules<TData = Awaited<ReturnType<typeof listWhatsappRules>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listWhatsappRules>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListWhatsappRulesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getCreateWhatsappRuleUrl = () => {
+
+
+
+
+  return `/api/whatsapp/rules`
+}
+
+/**
+ * @summary Create a new automation rule
+ */
+export const createWhatsappRule = async (createWhatsAppRuleBody: CreateWhatsAppRuleBody, options?: RequestInit): Promise<WhatsAppRule> => {
+
+  return customFetch<WhatsAppRule>(getCreateWhatsappRuleUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      createWhatsAppRuleBody,)
+  }
+);}
+
+
+
+
+export const getCreateWhatsappRuleMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createWhatsappRule>>, TError,{data: BodyType<CreateWhatsAppRuleBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createWhatsappRule>>, TError,{data: BodyType<CreateWhatsAppRuleBody>}, TContext> => {
+
+const mutationKey = ['createWhatsappRule'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createWhatsappRule>>, {data: BodyType<CreateWhatsAppRuleBody>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createWhatsappRule(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateWhatsappRuleMutationResult = NonNullable<Awaited<ReturnType<typeof createWhatsappRule>>>
+    export type CreateWhatsappRuleMutationBody = BodyType<CreateWhatsAppRuleBody>
+    export type CreateWhatsappRuleMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Create a new automation rule
+ */
+export const useCreateWhatsappRule = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createWhatsappRule>>, TError,{data: BodyType<CreateWhatsAppRuleBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createWhatsappRule>>,
+        TError,
+        {data: BodyType<CreateWhatsAppRuleBody>},
+        TContext
+      > => {
+      return useMutation(getCreateWhatsappRuleMutationOptions(options));
+    }
+
+export const getDeleteWhatsappRuleUrl = (id: string,) => {
+
+
+
+
+  return `/api/whatsapp/rules/${id}`
+}
+
+/**
+ * @summary Delete a rule
+ */
+export const deleteWhatsappRule = async (id: string, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeleteWhatsappRuleUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteWhatsappRuleMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteWhatsappRule>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteWhatsappRule>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['deleteWhatsappRule'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteWhatsappRule>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteWhatsappRule(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteWhatsappRuleMutationResult = NonNullable<Awaited<ReturnType<typeof deleteWhatsappRule>>>
+
+    export type DeleteWhatsappRuleMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Delete a rule
+ */
+export const useDeleteWhatsappRule = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteWhatsappRule>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteWhatsappRule>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getDeleteWhatsappRuleMutationOptions(options));
+    }
+
+export const getToggleWhatsappRuleUrl = (id: string,) => {
+
+
+
+
+  return `/api/whatsapp/rules/${id}`
+}
+
+/**
+ * @summary Toggle rule enabled/disabled
+ */
+export const toggleWhatsappRule = async (id: string,
+    toggleRuleBody: ToggleRuleBody, options?: RequestInit): Promise<WhatsAppRule> => {
+
+  return customFetch<WhatsAppRule>(getToggleWhatsappRuleUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      toggleRuleBody,)
+  }
+);}
+
+
+
+
+export const getToggleWhatsappRuleMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof toggleWhatsappRule>>, TError,{id: string;data: BodyType<ToggleRuleBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof toggleWhatsappRule>>, TError,{id: string;data: BodyType<ToggleRuleBody>}, TContext> => {
+
+const mutationKey = ['toggleWhatsappRule'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof toggleWhatsappRule>>, {id: string;data: BodyType<ToggleRuleBody>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  toggleWhatsappRule(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ToggleWhatsappRuleMutationResult = NonNullable<Awaited<ReturnType<typeof toggleWhatsappRule>>>
+    export type ToggleWhatsappRuleMutationBody = BodyType<ToggleRuleBody>
+    export type ToggleWhatsappRuleMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Toggle rule enabled/disabled
+ */
+export const useToggleWhatsappRule = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof toggleWhatsappRule>>, TError,{id: string;data: BodyType<ToggleRuleBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof toggleWhatsappRule>>,
+        TError,
+        {id: string;data: BodyType<ToggleRuleBody>},
+        TContext
+      > => {
+      return useMutation(getToggleWhatsappRuleMutationOptions(options));
+    }
+
+export const getGetShopifyStatusesUrl = () => {
+
+
+
+
+  return `/api/whatsapp/shopify-statuses`
+}
+
+/**
+ * @summary Get all Shopify trigger statuses
+ */
+export const getShopifyStatuses = async ( options?: RequestInit): Promise<ShopifyStatusesResponse> => {
+
+  return customFetch<ShopifyStatusesResponse>(getGetShopifyStatusesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetShopifyStatusesQueryKey = () => {
+    return [
+    `/api/whatsapp/shopify-statuses`
+    ] as const;
+    }
+
+
+export const getGetShopifyStatusesQueryOptions = <TData = Awaited<ReturnType<typeof getShopifyStatuses>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getShopifyStatuses>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetShopifyStatusesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getShopifyStatuses>>> = ({ signal }) => getShopifyStatuses({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getShopifyStatuses>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetShopifyStatusesQueryResult = NonNullable<Awaited<ReturnType<typeof getShopifyStatuses>>>
+export type GetShopifyStatusesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get all Shopify trigger statuses
+ */
+
+export function useGetShopifyStatuses<TData = Awaited<ReturnType<typeof getShopifyStatuses>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getShopifyStatuses>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetShopifyStatusesQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
