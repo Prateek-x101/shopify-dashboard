@@ -143,6 +143,11 @@ export interface WhatsAppStatus {
   state: string;
 }
 
+export interface WhatsAppButton {
+  id?: string;
+  body: string;
+}
+
 export interface WhatsAppRule {
   id: string;
   trigger_type: string;
@@ -151,6 +156,9 @@ export interface WhatsAppRule {
   message_template: string;
   enabled: boolean;
   send_image: boolean;
+  buttons: WhatsAppButton[];
+  /** @nullable */
+  footer?: string | null;
   created_at: string;
 }
 
@@ -159,6 +167,9 @@ export interface CreateWhatsAppRuleBody {
   trigger_status: string;
   message_template: string;
   send_image: boolean;
+  buttons: WhatsAppButton[];
+  /** @nullable */
+  footer?: string | null;
 }
 
 export interface WhatsAppRulesResponse {

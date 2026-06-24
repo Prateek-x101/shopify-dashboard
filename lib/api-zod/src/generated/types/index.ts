@@ -24,6 +24,7 @@ export * from './settingsInput';
 export * from './shopifyStatus';
 export * from './shopifyStatusesResponse';
 export * from './toggleRuleBody';
+export * from './whatsAppButton';
 export * from './whatsAppMessage';
 export * from './whatsAppMessagesResponse';
 export * from './whatsAppRule';

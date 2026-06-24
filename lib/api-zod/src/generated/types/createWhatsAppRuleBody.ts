@@ -5,10 +5,14 @@
  * Shopify Orders Dashboard API
  * OpenAPI spec version: 0.1.0
  */
+import type { WhatsAppButton } from './whatsAppButton';
 
 export interface CreateWhatsAppRuleBody {
   trigger_type: string;
   trigger_status: string;
   message_template: string;
   send_image: boolean;
+  buttons: WhatsAppButton[];
+  /** @nullable */
+  footer?: string | null;
 }

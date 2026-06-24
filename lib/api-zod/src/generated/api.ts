@@ -245,6 +245,11 @@ export const ListWhatsappRulesResponse = zod.object({
   "message_template": zod.string(),
   "enabled": zod.boolean(),
   "send_image": zod.boolean(),
+  "buttons": zod.array(zod.object({
+  "id": zod.string().optional(),
+  "body": zod.string()
+})),
+  "footer": zod.string().nullish(),
   "created_at": zod.string()
 }))
 })
@@ -257,7 +262,12 @@ export const CreateWhatsappRuleBody = zod.object({
   "trigger_type": zod.string(),
   "trigger_status": zod.string(),
   "message_template": zod.string(),
-  "send_image": zod.boolean()
+  "send_image": zod.boolean(),
+  "buttons": zod.array(zod.object({
+  "id": zod.string().optional(),
+  "body": zod.string()
+})),
+  "footer": zod.string().nullish()
 })
 
 
@@ -288,6 +298,11 @@ export const ToggleWhatsappRuleResponse = zod.object({
   "message_template": zod.string(),
   "enabled": zod.boolean(),
   "send_image": zod.boolean(),
+  "buttons": zod.array(zod.object({
+  "id": zod.string().optional(),
+  "body": zod.string()
+})),
+  "footer": zod.string().nullish(),
   "created_at": zod.string()
 })
 

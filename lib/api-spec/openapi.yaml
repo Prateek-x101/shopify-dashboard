@@ -545,6 +545,16 @@ components:
         - connected
         - state
 
+    WhatsAppButton:
+      type: object
+      properties:
+        id:
+          type: string
+        body:
+          type: string
+      required:
+        - body
+
     WhatsAppRule:
       type: object
       properties:
@@ -562,6 +572,12 @@ components:
           type: boolean
         send_image:
           type: boolean
+        buttons:
+          type: array
+          items:
+            $ref: "#/components/schemas/WhatsAppButton"
+        footer:
+          type: ["string", "null"]
         created_at:
           type: string
       required:
@@ -572,6 +588,7 @@ components:
         - message_template
         - enabled
         - send_image
+        - buttons
         - created_at
 
     CreateWhatsAppRuleBody:
@@ -585,11 +602,18 @@ components:
           type: string
         send_image:
           type: boolean
+        buttons:
+          type: array
+          items:
+            $ref: "#/components/schemas/WhatsAppButton"
+        footer:
+          type: ["string", "null"]
       required:
         - trigger_type
         - trigger_status
         - message_template
         - send_image
+        - buttons
 
     WhatsAppRulesResponse:
       type: object

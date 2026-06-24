@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { Client, NoAuth, MessageMedia } from "whatsapp-web.js";
+import { Client, NoAuth, MessageMedia, Buttons } from "whatsapp-web.js";
 import QRCode from "qrcode";
 import { CreateWhatsappRuleBody, ToggleWhatsappRuleBody } from "@workspace/api-zod";
 
@@ -18,6 +18,8 @@ process.on("unhandledRejection", (reason) => {
 });
 
 // ── In-memory state ──────────────────────────────────────────────
+interface WaButton { id?: string; body: string; }
+
 interface ChatMessage {
   id: string;
   order_id: string;
@@ -47,6 +49,8 @@ interface Rule {
   message_template: string;
   enabled: boolean;
   send_image: boolean;
+  buttons: WaButton[];
+  footer?: string | null;
   created_at: string;
 }
 
@@ -227,11 +231,12 @@ router.post("/whatsapp/disconnect", async (_req, res) => {
   res.json({ connected: false, phone_number: null, qr_data_url: null, state: "disconnected" });
 });
 
-// ── Send WhatsApp message (with optional product image) ───────────
+// ── Send WhatsApp message (with optional image + buttons) ─────────
 router.post("/whatsapp/send-message", async (req, res) => {
-  const { to_phone, message, order_id, order_name, customer_name, image_url } = req.body as {
+  const { to_phone, message, order_id, order_name, customer_name, image_url, buttons, footer } = req.body as {
     to_phone: string; message: string; order_id: string;
     order_name?: string; customer_name?: string; image_url?: string;
+    buttons?: WaButton[]; footer?: string;
   };
 
   if (!to_phone || !message || !order_id) {
@@ -245,10 +250,43 @@ router.post("/whatsapp/send-message", async (req, res) => {
 
   const chatId = formatPhoneForWhatsApp(to_phone);
   const msgId = String(msgCounter++);
+  const hasButtons = buttons && buttons.length > 0;
 
   try {
-    // If image_url provided, send image first then text
-    if (image_url) {
+    if (hasButtons) {
+      // Send as interactive Buttons message (max 3 buttons)
+      // Note: image + buttons can be combined using MessageMedia as body
+      if (image_url) {
+        try {
+          const imgRes = await fetch(image_url);
+          if (imgRes.ok) {
+            const buffer = Buffer.from(await imgRes.arrayBuffer());
+            const contentType = imgRes.headers.get("content-type") || "image/jpeg";
+            const ext = contentType.split("/")[1]?.split(";")[0] || "jpg";
+            const media = new MessageMedia(contentType, buffer.toString("base64"), `product.${ext}`);
+            const btnMsg = new Buttons(media, buttons.slice(0, 3).map((b) => ({ id: b.id, body: b.body })), message, footer ?? "");
+            await waClient.sendMessage(chatId, btnMsg);
+          } else {
+            const btnMsg = new Buttons(message, buttons.slice(0, 3).map((b) => ({ id: b.id, body: b.body })), "", footer ?? "");
+            await waClient.sendMessage(chatId, btnMsg);
+          }
+        } catch {
+          // Fallback: plain text with buttons as numbered list
+          const btnText = buttons.map((b, i) => `${i + 1}. ${b.body}`).join("\n");
+          await waClient.sendMessage(chatId, `${message}\n\n${btnText}`);
+        }
+      } else {
+        try {
+          const btnMsg = new Buttons(message, buttons.slice(0, 3).map((b) => ({ id: b.id, body: b.body })), "", footer ?? "");
+          await waClient.sendMessage(chatId, btnMsg);
+        } catch {
+          // Fallback: plain text with buttons listed
+          const btnText = buttons.map((b, i) => `${i + 1}. ${b.body}`).join("\n");
+          await waClient.sendMessage(chatId, `${message}\n\n${btnText}`);
+        }
+      }
+    } else if (image_url) {
+      // Image only (no buttons)
       try {
         const imgRes = await fetch(image_url);
         if (imgRes.ok) {
@@ -295,12 +333,14 @@ router.post("/whatsapp/rules", (req, res) => {
   const parsed = CreateWhatsappRuleBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Invalid body" }); return; }
 
-  const { trigger_type, trigger_status, message_template, send_image } = parsed.data;
+  const { trigger_type, trigger_status, message_template, send_image, buttons, footer } = parsed.data;
   const status = SHOPIFY_STATUSES.find((s) => s.id === trigger_status);
   const rule: Rule = {
     id: String(ruleCounter++), trigger_type, trigger_status,
     trigger_label: status?.label ?? trigger_status,
     message_template, enabled: true, send_image: send_image ?? false,
+    buttons: (buttons ?? []) as WaButton[],
+    footer: footer ?? null,
     created_at: new Date().toISOString(),
   };
   rules.push(rule);

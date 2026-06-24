@@ -344,6 +344,9 @@ function RuleBuilder({ onSave, onCancel }: { onSave: () => void; onCancel: () =>
   const [message, setMessage] = useState("");
   const [filterType, setFilterType] = useState<string>("all");
   const [sendImage, setSendImage] = useState(false);
+  const [buttons, setButtons] = useState<{ id: string; body: string }[]>([]);
+  const [footer, setFooter] = useState("");
+  const [showButtonsPanel, setShowButtonsPanel] = useState(false);
 
   const statuses = statusesData?.statuses ?? [];
   const filtered = filterType === "all" ? statuses : statuses.filter((s) => s.type === filterType);
@@ -379,7 +382,7 @@ function RuleBuilder({ onSave, onCancel }: { onSave: () => void; onCancel: () =>
       return;
     }
     createRule.mutate(
-      { data: { trigger_type: selected?.type ?? "order", trigger_status: selectedStatus, message_template: message, send_image: sendImage } },
+      { data: { trigger_type: selected?.type ?? "order", trigger_status: selectedStatus, message_template: message, send_image: sendImage, buttons: buttons.filter(b => b.body.trim()), footer: footer.trim() || null } },
       {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getListWhatsappRulesQueryKey() });
@@ -512,6 +515,80 @@ function RuleBuilder({ onSave, onCancel }: { onSave: () => void; onCancel: () =>
                   : <ToggleLeft className="w-6 h-6 text-gray-300" />}
               </button>
             </div>
+
+            {/* Buttons panel toggle */}
+            <div className="mt-2 flex items-center justify-between p-2.5 bg-white rounded-lg border border-gray-200">
+              <div className="flex items-center gap-2">
+                <Zap className="w-3.5 h-3.5 text-amber-500" />
+                <div>
+                  <div className="text-xs font-medium text-gray-800">Add quick-reply buttons</div>
+                  <div className="text-[10px] text-gray-400">Up to 3 tap buttons shown below your message</div>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setShowButtonsPanel((v) => !v);
+                  if (!showButtonsPanel && buttons.length === 0) {
+                    setButtons([{ id: "1", body: "" }]);
+                  }
+                }}
+                className="shrink-0 transition-colors"
+              >
+                {showButtonsPanel
+                  ? <ToggleRight className="w-6 h-6 text-amber-500" />
+                  : <ToggleLeft className="w-6 h-6 text-gray-300" />}
+              </button>
+            </div>
+
+            {/* Buttons editor */}
+            {showButtonsPanel && (
+              <div className="mt-2 p-3 bg-amber-50 rounded-lg border border-amber-200 space-y-2">
+                <div className="text-[10px] text-amber-700 font-semibold uppercase mb-1">Quick-reply buttons (max 3)</div>
+                {buttons.map((btn, idx) => (
+                  <div key={idx} className="flex items-center gap-2">
+                    <span className="text-[10px] text-gray-400 w-4 shrink-0">{idx + 1}.</span>
+                    <input
+                      type="text"
+                      value={btn.body}
+                      maxLength={20}
+                      placeholder={["Track my order", "Need help", "Contact us"][idx] ?? "Button text"}
+                      onChange={(e) => {
+                        const updated = [...buttons];
+                        updated[idx] = { ...updated[idx], body: e.target.value };
+                        setButtons(updated);
+                      }}
+                      className="flex-1 text-xs border border-amber-300 rounded px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-amber-300 bg-white"
+                    />
+                    <button
+                      onClick={() => setButtons(buttons.filter((_, i) => i !== idx))}
+                      className="text-gray-400 hover:text-red-500 transition-colors"
+                    >
+                      <XCircle className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+                {buttons.length < 3 && (
+                  <button
+                    onClick={() => setButtons([...buttons, { id: String(buttons.length + 1), body: "" }])}
+                    className="text-[10px] text-amber-600 hover:text-amber-800 flex items-center gap-1 mt-1 font-medium"
+                  >
+                    <Plus className="w-3 h-3" /> Add button
+                  </button>
+                )}
+                <div className="mt-2">
+                  <div className="text-[10px] text-gray-500 mb-1">Footer text (optional)</div>
+                  <input
+                    type="text"
+                    value={footer}
+                    maxLength={60}
+                    placeholder="e.g. Reply STOP to unsubscribe"
+                    onChange={(e) => setFooter(e.target.value)}
+                    className="w-full text-xs border border-amber-300 rounded px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-amber-300 bg-white"
+                  />
+                </div>
+              </div>
+            )}
+
             {/* Preview */}
             {message && (
               <div className="mt-3 p-2.5 bg-[#dcf8c6] rounded-xl rounded-tr-sm text-xs text-gray-800 shadow-sm border border-[#c3e6b0]">
@@ -532,6 +609,16 @@ function RuleBuilder({ onSave, onCancel }: { onSave: () => void; onCancel: () =>
                     .replace(/\{courier_name\}/g, "Delhivery")
                     .replace(/\{tracking_id\}/g, "123456789012")}
                 </div>
+                {footer && <div className="mt-1 text-[9px] text-gray-400 italic">{footer}</div>}
+                {showButtonsPanel && buttons.filter(b => b.body.trim()).length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1 border-t border-[#b2dfb2] pt-2">
+                    {buttons.filter(b => b.body.trim()).map((btn, i) => (
+                      <span key={i} className="text-[10px] px-3 py-1 bg-white rounded-full border border-[#25d366] text-[#075E54] font-medium shadow-sm">
+                        {btn.body}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -620,6 +707,11 @@ function RulesList() {
                   <ImageIcon className="w-2.5 h-2.5" /> Image
                 </span>
               )}
+              {rule.buttons && rule.buttons.length > 0 && (
+                <span className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 font-medium">
+                  <Zap className="w-2.5 h-2.5" /> {rule.buttons.length} btn{rule.buttons.length > 1 ? "s" : ""}
+                </span>
+              )}
               {!rule.enabled && (
                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 border border-gray-200">Disabled</span>
               )}
@@ -627,6 +719,15 @@ function RulesList() {
             <div className="mt-1.5 text-xs text-gray-500 bg-[#dcf8c6]/60 px-2.5 py-1.5 rounded-lg rounded-tr-sm border border-[#c3e6b0]/50 font-mono line-clamp-2 whitespace-pre-wrap">
               {rule.message_template}
             </div>
+            {rule.buttons && rule.buttons.length > 0 && (
+              <div className="mt-1.5 flex flex-wrap gap-1">
+                {rule.buttons.map((btn, i) => (
+                  <span key={i} className="text-[10px] px-2.5 py-0.5 bg-white rounded-full border border-[#25d366]/40 text-[#075E54] font-medium">
+                    {btn.body}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Delete */}
