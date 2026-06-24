@@ -163,6 +163,31 @@ export interface WhatsAppRulesResponse {
   rules: WhatsAppRule[];
 }
 
+export interface SendWhatsAppMessageBody {
+  to_phone: string;
+  message: string;
+  order_id: string;
+  order_name?: string;
+  customer_name?: string;
+}
+
+export interface WhatsAppMessage {
+  id: string;
+  order_id: string;
+  to_phone: string;
+  message: string;
+  from: string;
+  status: string;
+  timestamp: string;
+}
+
+export interface WhatsAppMessagesResponse {
+  messages: WhatsAppMessage[];
+  connected: boolean;
+  /** @nullable */
+  phone_number?: string | null;
+}
+
 export interface ShopifyStatus {
   id: string;
   label: string;

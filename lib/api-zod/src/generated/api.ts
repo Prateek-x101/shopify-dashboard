@@ -304,6 +304,50 @@ export const GetShopifyStatusesResponse = zod.object({
 
 
 /**
+ * @summary Send a real WhatsApp message to a customer
+ */
+export const SendWhatsappMessageBody = zod.object({
+  "to_phone": zod.string(),
+  "message": zod.string(),
+  "order_id": zod.string(),
+  "order_name": zod.string().optional(),
+  "customer_name": zod.string().optional()
+})
+
+export const SendWhatsappMessageResponse = zod.object({
+  "id": zod.string(),
+  "order_id": zod.string(),
+  "to_phone": zod.string(),
+  "message": zod.string(),
+  "from": zod.string(),
+  "status": zod.string(),
+  "timestamp": zod.string()
+})
+
+
+/**
+ * @summary Get WhatsApp chat history for an order
+ */
+export const GetWhatsappMessagesParams = zod.object({
+  "order_id": zod.coerce.string()
+})
+
+export const GetWhatsappMessagesResponse = zod.object({
+  "messages": zod.array(zod.object({
+  "id": zod.string(),
+  "order_id": zod.string(),
+  "to_phone": zod.string(),
+  "message": zod.string(),
+  "from": zod.string(),
+  "status": zod.string(),
+  "timestamp": zod.string()
+})),
+  "connected": zod.boolean(),
+  "phone_number": zod.string().nullish()
+})
+
+
+/**
  * @summary Get current settings
  */
 export const GetSettingsResponse = zod.object({

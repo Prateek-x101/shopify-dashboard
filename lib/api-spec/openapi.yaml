@@ -239,6 +239,48 @@ paths:
               schema:
                 $ref: "#/components/schemas/ShopifyStatusesResponse"
 
+  /whatsapp/send-message:
+    post:
+      operationId: sendWhatsappMessage
+      tags: [whatsapp]
+      summary: Send a real WhatsApp message to a customer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendWhatsAppMessageBody"
+      responses:
+        "200":
+          description: Message sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WhatsAppMessage"
+        "400":
+          description: Bad request
+        "503":
+          description: WhatsApp not connected
+
+  /whatsapp/messages/{order_id}:
+    get:
+      operationId: getWhatsappMessages
+      tags: [whatsapp]
+      summary: Get WhatsApp chat history for an order
+      parameters:
+        - in: path
+          name: order_id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Messages
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WhatsAppMessagesResponse"
+
   /settings:
     get:
       operationId: getSettings
@@ -552,6 +594,65 @@ components:
             $ref: "#/components/schemas/WhatsAppRule"
       required:
         - rules
+
+    SendWhatsAppMessageBody:
+      type: object
+      properties:
+        to_phone:
+          type: string
+        message:
+          type: string
+        order_id:
+          type: string
+        order_name:
+          type: string
+        customer_name:
+          type: string
+      required:
+        - to_phone
+        - message
+        - order_id
+
+    WhatsAppMessage:
+      type: object
+      properties:
+        id:
+          type: string
+        order_id:
+          type: string
+        to_phone:
+          type: string
+        message:
+          type: string
+        from:
+          type: string
+        status:
+          type: string
+        timestamp:
+          type: string
+      required:
+        - id
+        - order_id
+        - to_phone
+        - message
+        - from
+        - status
+        - timestamp
+
+    WhatsAppMessagesResponse:
+      type: object
+      properties:
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/WhatsAppMessage"
+        connected:
+          type: boolean
+        phone_number:
+          type: ["string", "null"]
+      required:
+        - messages
+        - connected
 
     ShopifyStatus:
       type: object

@@ -349,6 +349,7 @@ export default function OrderDetail() {
             customerName={customerName}
             customerPhone={order.customer?.phone ?? order.shipping_address?.phone}
             orderName={order.name}
+            orderId={id || ""}
           />
 
           {/* Customer */}

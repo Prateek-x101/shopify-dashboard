@@ -27,10 +27,13 @@ import type {
   OrderEventsResponse,
   OrderListResponse,
   OrdersSummary,
+  SendWhatsAppMessageBody,
   Settings,
   SettingsInput,
   ShopifyStatusesResponse,
   ToggleRuleBody,
+  WhatsAppMessage,
+  WhatsAppMessagesResponse,
   WhatsAppRule,
   WhatsAppRulesResponse,
   WhatsAppStatus
@@ -1012,6 +1015,154 @@ export function useGetShopifyStatuses<TData = Awaited<ReturnType<typeof getShopi
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetShopifyStatusesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getSendWhatsappMessageUrl = () => {
+
+
+
+
+  return `/api/whatsapp/send-message`
+}
+
+/**
+ * @summary Send a real WhatsApp message to a customer
+ */
+export const sendWhatsappMessage = async (sendWhatsAppMessageBody: SendWhatsAppMessageBody, options?: RequestInit): Promise<WhatsAppMessage> => {
+
+  return customFetch<WhatsAppMessage>(getSendWhatsappMessageUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      sendWhatsAppMessageBody,)
+  }
+);}
+
+
+
+
+export const getSendWhatsappMessageMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendWhatsappMessage>>, TError,{data: BodyType<SendWhatsAppMessageBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof sendWhatsappMessage>>, TError,{data: BodyType<SendWhatsAppMessageBody>}, TContext> => {
+
+const mutationKey = ['sendWhatsappMessage'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof sendWhatsappMessage>>, {data: BodyType<SendWhatsAppMessageBody>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  sendWhatsappMessage(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SendWhatsappMessageMutationResult = NonNullable<Awaited<ReturnType<typeof sendWhatsappMessage>>>
+    export type SendWhatsappMessageMutationBody = BodyType<SendWhatsAppMessageBody>
+    export type SendWhatsappMessageMutationError = ErrorType<void>
+
+    /**
+ * @summary Send a real WhatsApp message to a customer
+ */
+export const useSendWhatsappMessage = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendWhatsappMessage>>, TError,{data: BodyType<SendWhatsAppMessageBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof sendWhatsappMessage>>,
+        TError,
+        {data: BodyType<SendWhatsAppMessageBody>},
+        TContext
+      > => {
+      return useMutation(getSendWhatsappMessageMutationOptions(options));
+    }
+
+export const getGetWhatsappMessagesUrl = (orderId: string,) => {
+
+
+
+
+  return `/api/whatsapp/messages/${orderId}`
+}
+
+/**
+ * @summary Get WhatsApp chat history for an order
+ */
+export const getWhatsappMessages = async (orderId: string, options?: RequestInit): Promise<WhatsAppMessagesResponse> => {
+
+  return customFetch<WhatsAppMessagesResponse>(getGetWhatsappMessagesUrl(orderId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetWhatsappMessagesQueryKey = (orderId: string,) => {
+    return [
+    `/api/whatsapp/messages/${orderId}`
+    ] as const;
+    }
+
+
+export const getGetWhatsappMessagesQueryOptions = <TData = Awaited<ReturnType<typeof getWhatsappMessages>>, TError = ErrorType<unknown>>(orderId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getWhatsappMessages>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetWhatsappMessagesQueryKey(orderId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getWhatsappMessages>>> = ({ signal }) => getWhatsappMessages(orderId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(orderId), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getWhatsappMessages>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetWhatsappMessagesQueryResult = NonNullable<Awaited<ReturnType<typeof getWhatsappMessages>>>
+export type GetWhatsappMessagesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get WhatsApp chat history for an order
+ */
+
+export function useGetWhatsappMessages<TData = Awaited<ReturnType<typeof getWhatsappMessages>>, TError = ErrorType<unknown>>(
+ orderId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getWhatsappMessages>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetWhatsappMessagesQueryOptions(orderId,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

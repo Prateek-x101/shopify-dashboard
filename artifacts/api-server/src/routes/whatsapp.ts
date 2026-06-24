@@ -9,6 +9,30 @@ const router = Router();
 const CHROMIUM_PATH = "/nix/store/qa9cnw4v5xkxyip6mb9kxqfq1z4x2dx1-chromium-138.0.7204.100/bin/chromium";
 
 // ── In-memory state ──────────────────────────────────────────────
+interface ChatMessage {
+  id: string;
+  order_id: string;
+  to_phone: string;
+  message: string;
+  from: "store" | "customer";
+  status: "sent" | "delivered" | "read" | "failed";
+  timestamp: string;
+}
+
+// messages keyed by order_id
+const messagesByOrder: Record<string, ChatMessage[]> = {};
+let msgCounter = 1;
+
+// ── Phone number formatter for WhatsApp ──────────────────────────
+function formatPhoneForWhatsApp(raw: string): string {
+  // Strip everything except digits
+  const digits = raw.replace(/\D/g, "");
+  // If starts with 0 (local Indian), replace with 91
+  if (digits.startsWith("0") && digits.length === 11) return `91${digits.slice(1)}@c.us`;
+  // Already has country code (10+ digits)
+  return `${digits}@c.us`;
+}
+
 interface Rule {
   id: string;
   trigger_type: string;
@@ -173,6 +197,72 @@ router.post("/whatsapp/disconnect", async (_req, res) => {
   waPhoneNumber = null;
   waQrDataUrl = null;
   res.json({ connected: false, phone_number: null, qr_data_url: null, state: "disconnected" });
+});
+
+// ── Send real WhatsApp message ────────────────────────────────────
+router.post("/whatsapp/send-message", async (req, res) => {
+  const { to_phone, message, order_id, order_name, customer_name } = req.body as {
+    to_phone: string;
+    message: string;
+    order_id: string;
+    order_name?: string;
+    customer_name?: string;
+  };
+
+  if (!to_phone || !message || !order_id) {
+    res.status(400).json({ error: "to_phone, message, order_id are required" });
+    return;
+  }
+
+  if (!waClient || waState !== "connected") {
+    res.status(503).json({ error: "WhatsApp not connected. Go to Settings → WhatsApp to connect." });
+    return;
+  }
+
+  const chatId = formatPhoneForWhatsApp(to_phone);
+  const msgId = String(msgCounter++);
+
+  try {
+    await waClient.sendMessage(chatId, message);
+
+    const chatMsg: ChatMessage = {
+      id: msgId,
+      order_id,
+      to_phone,
+      message,
+      from: "store",
+      status: "sent",
+      timestamp: new Date().toISOString(),
+    };
+
+    if (!messagesByOrder[order_id]) messagesByOrder[order_id] = [];
+    messagesByOrder[order_id].push(chatMsg);
+
+    res.json(chatMsg);
+  } catch (err) {
+    const failedMsg: ChatMessage = {
+      id: msgId,
+      order_id,
+      to_phone,
+      message,
+      from: "store",
+      status: "failed",
+      timestamp: new Date().toISOString(),
+    };
+    if (!messagesByOrder[order_id]) messagesByOrder[order_id] = [];
+    messagesByOrder[order_id].push(failedMsg);
+    res.status(500).json({ error: "Failed to send message", detail: String(err) });
+  }
+});
+
+// ── Get messages for an order ──────────────────────────────────────
+router.get("/whatsapp/messages/:order_id", (req, res) => {
+  const msgs = messagesByOrder[req.params.order_id] ?? [];
+  res.json({
+    messages: msgs,
+    connected: waState === "connected",
+    phone_number: waPhoneNumber,
+  });
 });
 
 // ── Rules CRUD ────────────────────────────────────────────────────
