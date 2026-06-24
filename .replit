@@ -1,4 +1,4 @@
-modules = ["nodejs-24"]
+modules = ["web", "nodejs-20", "nix"]
 
 [deployment]
 router = "application"
