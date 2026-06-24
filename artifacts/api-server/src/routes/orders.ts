@@ -7,7 +7,7 @@ import {
 const router = Router();
 
 const SHOPIFY_STORE = process.env.SHOPIFY_STORE_URL ?? "fccevc-p1.myshopify.com";
-const SHOPIFY_TOKEN = process.env.SHOPIFY_ACCESS_TOKEN ?? "";
+const SHOPIFY_TOKEN = process.env.SHOPIFY_CUSTOM_APP_ACCESS_TOKEN ?? "";
 const SHOPIFY_API_VERSION = "2024-01";
 
 function shopifyUrl(path: string) {
