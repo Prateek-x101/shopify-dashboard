@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { Client, NoAuth } from "whatsapp-web.js";
+import { Client, NoAuth, MessageMedia } from "whatsapp-web.js";
 import QRCode from "qrcode";
 import { CreateWhatsappRuleBody, ToggleWhatsappRuleBody } from "@workspace/api-zod";
 
@@ -46,6 +46,7 @@ interface Rule {
   trigger_label: string;
   message_template: string;
   enabled: boolean;
+  send_image: boolean;
   created_at: string;
 }
 
@@ -55,21 +56,18 @@ let waState: WaState = "disconnected";
 let waPhoneNumber: string | null = null;
 let waQrDataUrl: string | null = null;
 let waClient: Client | null = null;
-let waInitLock = false; // prevents concurrent init attempts
+let waInitLock = false;
 const rules: Rule[] = [];
 let ruleCounter = 1;
 
 // ── WhatsApp Client factory ───────────────────────────────────────
 async function startWhatsAppClient(): Promise<void> {
-  // ① Guard: never start two clients at once
   if (waInitLock || waState === "initializing") return;
   waInitLock = true;
 
-  // ② Cleanly destroy any existing client
   if (waClient) {
     try { await waClient.destroy(); } catch {}
     waClient = null;
-    // Brief pause so Chromium fully releases its ports/files
     await new Promise((r) => setTimeout(r, 1500));
   }
 
@@ -77,8 +75,6 @@ async function startWhatsAppClient(): Promise<void> {
   waQrDataUrl = null;
   waPhoneNumber = null;
 
-  // ③ Use NoAuth to avoid stale session conflicts across server restarts.
-  //    Each connect attempt gets a clean slate — the QR scan authenticates fresh.
   const client = new Client({
     authStrategy: new NoAuth(),
     puppeteer: {
@@ -141,7 +137,6 @@ async function startWhatsAppClient(): Promise<void> {
 
   waClient = client;
 
-  // ④ Initialize asynchronously — don't await here (non-blocking)
   client.initialize().catch((err: Error) => {
     console.error("[whatsapp] initialize error:", err.message);
     waState = "disconnected";
@@ -151,8 +146,9 @@ async function startWhatsAppClient(): Promise<void> {
   });
 }
 
-// ── All Shopify trigger statuses ─────────────────────────────────
+// ── All statuses (Shopify + Shiprocket-aligned) ───────────────────
 const SHOPIFY_STATUSES = [
+  // ── Order statuses ──────────────────────────────────────────────
   { id: "order_placed",          label: "Order Placed",             type: "order",       emoji: "🛒", description: "New order is placed by customer" },
   { id: "payment_pending",       label: "Payment Pending",          type: "order",       emoji: "⏳", description: "Payment not yet received" },
   { id: "payment_authorized",    label: "Payment Authorized",       type: "order",       emoji: "✅", description: "Payment authorized, not captured" },
@@ -161,18 +157,29 @@ const SHOPIFY_STATUSES = [
   { id: "payment_refunded",      label: "Refund Issued",            type: "order",       emoji: "↩️",  description: "Full refund given to customer" },
   { id: "partially_refunded",    label: "Partially Refunded",       type: "order",       emoji: "🔄", description: "Partial refund given" },
   { id: "order_cancelled",       label: "Order Cancelled",          type: "order",       emoji: "❌", description: "Order was cancelled" },
+
+  // ── Fulfillment statuses ────────────────────────────────────────
   { id: "order_confirmed",       label: "Order Confirmed",          type: "fulfillment", emoji: "📦", description: "Order confirmed and being processed" },
   { id: "label_printed",         label: "Label Printed",            type: "fulfillment", emoji: "🖨️",  description: "Shipping label created" },
   { id: "order_shipped",         label: "Order Shipped",            type: "fulfillment", emoji: "🚚", description: "Order has been shipped" },
   { id: "partially_fulfilled",   label: "Partially Fulfilled",      type: "fulfillment", emoji: "📫", description: "Some items fulfilled" },
   { id: "fully_fulfilled",       label: "Fully Fulfilled",          type: "fulfillment", emoji: "✔️",  description: "All items fulfilled" },
-  { id: "in_transit",            label: "In Transit",               type: "shipping",    emoji: "🛣️",  description: "Package on the way" },
+
+  // ── Shiprocket / Shipping statuses ──────────────────────────────
+  { id: "pickup_pending",        label: "Pickup Pending",           type: "shipping",    emoji: "🕐", description: "Awaiting pickup by courier" },
+  { id: "pickup_scheduled",      label: "Pickup Scheduled",         type: "shipping",    emoji: "📅", description: "Pickup scheduled with courier" },
+  { id: "pickup_generated",      label: "Pickup Generated",         type: "shipping",    emoji: "🏷️",  description: "Pickup request generated" },
+  { id: "manifested",            label: "Manifested",               type: "shipping",    emoji: "📋", description: "Package manifested / label printed" },
+  { id: "in_transit",            label: "In Transit",               type: "shipping",    emoji: "🛣️",  description: "Package on the way to destination" },
+  { id: "reached_destination",   label: "Reached Destination Hub",  type: "shipping",    emoji: "🏢", description: "Package reached destination hub" },
   { id: "out_for_delivery",      label: "Out for Delivery",         type: "shipping",    emoji: "🏍️",  description: "Package out with delivery agent" },
-  { id: "attempted_delivery",    label: "Delivery Attempted",       type: "shipping",    emoji: "🔔", description: "Delivery was attempted but failed" },
-  { id: "ready_for_pickup",      label: "Ready for Pickup",         type: "shipping",    emoji: "🏪", description: "Available at pickup location" },
-  { id: "picked_up",             label: "Picked Up",                type: "shipping",    emoji: "🤝", description: "Customer collected the order" },
   { id: "delivered",             label: "Delivered",                type: "shipping",    emoji: "🎉", description: "Successfully delivered to customer" },
-  { id: "delivery_failed",       label: "Delivery Failed",          type: "shipping",    emoji: "⚠️",  description: "Delivery failed / returned" },
+  { id: "attempted_delivery",    label: "Delivery Attempted",       type: "shipping",    emoji: "🔔", description: "Delivery was attempted but failed" },
+  { id: "undelivered",           label: "Undelivered",              type: "shipping",    emoji: "⚠️",  description: "Could not be delivered" },
+  { id: "delivery_failed",       label: "Delivery Failed",          type: "shipping",    emoji: "❗", description: "Delivery failed / returned to origin" },
+  { id: "rto_initiated",         label: "RTO Initiated",            type: "shipping",    emoji: "↩️",  description: "Return to origin started" },
+  { id: "rto_delivered",         label: "RTO Delivered",            type: "shipping",    emoji: "🏭", description: "Package returned to your warehouse" },
+  { id: "lost",                  label: "Lost in Transit",          type: "shipping",    emoji: "❓", description: "Package lost in transit" },
 ];
 
 // ── Routes ────────────────────────────────────────────────────────
@@ -190,7 +197,6 @@ router.get("/whatsapp/status", (_req, res) => {
   });
 });
 
-// Non-blocking connect — returns immediately, frontend polls for QR
 router.post("/whatsapp/connect", async (_req, res) => {
   if (waState === "connected") {
     res.json({ connected: true, phone_number: waPhoneNumber, qr_data_url: null, state: "connected" });
@@ -205,9 +211,7 @@ router.post("/whatsapp/connect", async (_req, res) => {
     return;
   }
 
-  // Fire and forget — QR will appear within ~10s, frontend polls every 3s
   startWhatsAppClient().catch(() => {});
-
   res.json({ connected: false, phone_number: null, qr_data_url: null, state: "initializing" });
 });
 
@@ -223,11 +227,11 @@ router.post("/whatsapp/disconnect", async (_req, res) => {
   res.json({ connected: false, phone_number: null, qr_data_url: null, state: "disconnected" });
 });
 
-// ── Send real WhatsApp message ────────────────────────────────────
+// ── Send WhatsApp message (with optional product image) ───────────
 router.post("/whatsapp/send-message", async (req, res) => {
-  const { to_phone, message, order_id, order_name, customer_name } = req.body as {
+  const { to_phone, message, order_id, order_name, customer_name, image_url } = req.body as {
     to_phone: string; message: string; order_id: string;
-    order_name?: string; customer_name?: string;
+    order_name?: string; customer_name?: string; image_url?: string;
   };
 
   if (!to_phone || !message || !order_id) {
@@ -243,7 +247,26 @@ router.post("/whatsapp/send-message", async (req, res) => {
   const msgId = String(msgCounter++);
 
   try {
-    await waClient.sendMessage(chatId, message);
+    // If image_url provided, send image first then text
+    if (image_url) {
+      try {
+        const imgRes = await fetch(image_url);
+        if (imgRes.ok) {
+          const buffer = Buffer.from(await imgRes.arrayBuffer());
+          const contentType = imgRes.headers.get("content-type") || "image/jpeg";
+          const ext = contentType.split("/")[1]?.split(";")[0] || "jpg";
+          const media = new MessageMedia(contentType, buffer.toString("base64"), `product.${ext}`);
+          await waClient.sendMessage(chatId, media, { caption: message });
+        } else {
+          await waClient.sendMessage(chatId, message);
+        }
+      } catch {
+        await waClient.sendMessage(chatId, message);
+      }
+    } else {
+      await waClient.sendMessage(chatId, message);
+    }
+
     const chatMsg: ChatMessage = { id: msgId, order_id, to_phone, message, from: "store", status: "sent", timestamp: new Date().toISOString() };
     if (!messagesByOrder[order_id]) messagesByOrder[order_id] = [];
     messagesByOrder[order_id].push(chatMsg);
@@ -272,12 +295,13 @@ router.post("/whatsapp/rules", (req, res) => {
   const parsed = CreateWhatsappRuleBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Invalid body" }); return; }
 
-  const { trigger_type, trigger_status, message_template } = parsed.data;
+  const { trigger_type, trigger_status, message_template, send_image } = parsed.data;
   const status = SHOPIFY_STATUSES.find((s) => s.id === trigger_status);
   const rule: Rule = {
     id: String(ruleCounter++), trigger_type, trigger_status,
     trigger_label: status?.label ?? trigger_status,
-    message_template, enabled: true, created_at: new Date().toISOString(),
+    message_template, enabled: true, send_image: send_image ?? false,
+    created_at: new Date().toISOString(),
   };
   rules.push(rule);
   res.status(201).json(rule);

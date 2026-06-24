@@ -150,6 +150,7 @@ export interface WhatsAppRule {
   trigger_label: string;
   message_template: string;
   enabled: boolean;
+  send_image: boolean;
   created_at: string;
 }
 
@@ -157,6 +158,7 @@ export interface CreateWhatsAppRuleBody {
   trigger_type: string;
   trigger_status: string;
   message_template: string;
+  send_image: boolean;
 }
 
 export interface WhatsAppRulesResponse {

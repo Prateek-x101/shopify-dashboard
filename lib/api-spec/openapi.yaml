@@ -560,6 +560,8 @@ components:
           type: string
         enabled:
           type: boolean
+        send_image:
+          type: boolean
         created_at:
           type: string
       required:
@@ -569,6 +571,7 @@ components:
         - trigger_label
         - message_template
         - enabled
+        - send_image
         - created_at
 
     CreateWhatsAppRuleBody:
@@ -580,10 +583,13 @@ components:
           type: string
         message_template:
           type: string
+        send_image:
+          type: boolean
       required:
         - trigger_type
         - trigger_status
         - message_template
+        - send_image
 
     WhatsAppRulesResponse:
       type: object

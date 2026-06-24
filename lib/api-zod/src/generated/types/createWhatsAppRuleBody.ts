@@ -10,4 +10,5 @@ export interface CreateWhatsAppRuleBody {
   trigger_type: string;
   trigger_status: string;
   message_template: string;
+  send_image: boolean;
 }

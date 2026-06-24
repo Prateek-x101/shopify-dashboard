@@ -13,5 +13,6 @@ export interface WhatsAppRule {
   trigger_label: string;
   message_template: string;
   enabled: boolean;
+  send_image: boolean;
   created_at: string;
 }

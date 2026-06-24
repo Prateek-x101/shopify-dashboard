@@ -19,7 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {
   CheckCircle2, XCircle, Plus, Trash2, ToggleLeft, ToggleRight,
-  Wifi, WifiOff, Loader2, Smartphone, RefreshCw, Zap,
+  Wifi, WifiOff, Loader2, Smartphone, RefreshCw, Zap, ImageIcon,
 } from "lucide-react";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -35,7 +35,10 @@ const TYPE_COLOR: Record<string, string> = {
 };
 
 /* ── Template variable hints ──────────────────────────────────── */
-const VARS = ["{customer_name}", "{order_name}", "{total}", "{tracking_url}", "{store_name}"];
+const VARS = [
+  "{customer_name}", "{order_name}", "{total}", "{tracking_url}",
+  "{store_name}", "{product_name}", "{courier_name}", "{tracking_id}",
+];
 
 /* ───────────────────────────────────────────────────────────────
    General Settings Tab
@@ -340,6 +343,7 @@ function RuleBuilder({ onSave, onCancel }: { onSave: () => void; onCancel: () =>
   const [selectedStatus, setSelectedStatus] = useState<string>("");
   const [message, setMessage] = useState("");
   const [filterType, setFilterType] = useState<string>("all");
+  const [sendImage, setSendImage] = useState(false);
 
   const statuses = statusesData?.statuses ?? [];
   const filtered = filterType === "all" ? statuses : statuses.filter((s) => s.type === filterType);
@@ -348,13 +352,20 @@ function RuleBuilder({ onSave, onCancel }: { onSave: () => void; onCancel: () =>
 
   // Auto-fill template when status chosen
   const DEFAULT_TEMPLATES: Record<string, string> = {
-    order_placed:        "Hi {customer_name}! 🛒 Thank you for your order {order_name} worth {total}. We'll confirm it shortly!",
-    payment_confirmed:   "Hi {customer_name}! 💰 Payment confirmed for order {order_name} ({total}). We're preparing it now.",
-    order_shipped:       "Hi {customer_name}! 🚚 Your order {order_name} has been shipped! Track: {tracking_url}",
-    out_for_delivery:    "Hi {customer_name}! 🏍️ Your order {order_name} is out for delivery today. Be ready!",
-    delivered:           "Hi {customer_name}! 🎉 Your order {order_name} has been delivered. Enjoy! Need help? Reply here.",
-    order_cancelled:     "Hi {customer_name}! ❌ Order {order_name} cancelled. Refund (if any) in 5-7 days.",
-    attempted_delivery:  "Hi {customer_name}! 🔔 Delivery of order {order_name} was attempted. We'll retry tomorrow.",
+    order_placed:        "Hi {customer_name}! 🛒 Thank you for your order {order_name} worth {total}.\nProduct: {product_name}\nWe'll confirm it shortly!",
+    payment_confirmed:   "Hi {customer_name}! 💰 Payment confirmed for order {order_name} ({total}).\nProduct: {product_name}\nWe're preparing it now.",
+    order_shipped:       "Hi {customer_name}! 🚚 Your order {order_name} has been shipped!\nProduct: {product_name}\nCourier: {courier_name} | AWB: {tracking_id}\nTrack: {tracking_url}",
+    pickup_pending:      "Hi {customer_name}! 🕐 Pickup is pending for your order {order_name}.\nCourier: {courier_name} | AWB: {tracking_id}\nWe'll update you once it's picked up.",
+    pickup_scheduled:    "Hi {customer_name}! 📅 Pickup scheduled for your order {order_name}.\nCourier: {courier_name} | AWB: {tracking_id}",
+    manifested:          "Hi {customer_name}! 📋 Your order {order_name} has been manifested.\nCourier: {courier_name} | AWB: {tracking_id}\nIt will be dispatched soon!",
+    in_transit:          "Hi {customer_name}! 🛣️ Your order {order_name} is in transit.\nCourier: {courier_name} | AWB: {tracking_id}\nTrack: {tracking_url}",
+    reached_destination: "Hi {customer_name}! 🏢 Your order {order_name} has reached the destination hub.\nCourier: {courier_name} | Tracking: {tracking_id}\nExpect delivery soon!",
+    out_for_delivery:    "Hi {customer_name}! 🏍️ Your order {order_name} is out for delivery today!\nCourier: {courier_name} | AWB: {tracking_id}\nPlease keep your phone handy.",
+    delivered:           "Hi {customer_name}! 🎉 Your order {order_name} has been delivered.\nProduct: {product_name}\nEnjoy! Need help? Reply here.",
+    attempted_delivery:  "Hi {customer_name}! 🔔 Delivery of order {order_name} was attempted but couldn't be completed.\nCourier: {courier_name} | AWB: {tracking_id}\nWe'll retry tomorrow.",
+    undelivered:         "Hi {customer_name}! ⚠️ Your order {order_name} could not be delivered.\nCourier: {courier_name} | AWB: {tracking_id}\nPlease contact us to resolve.",
+    rto_initiated:       "Hi {customer_name}! ↩️ Your order {order_name} is being returned to us.\nAWB: {tracking_id}\nOur team will contact you shortly.",
+    order_cancelled:     "Hi {customer_name}! ❌ Order {order_name} has been cancelled. Refund (if any) will be processed in 5-7 business days.",
   };
 
   function handleSelectStatus(id: string) {
@@ -368,7 +379,7 @@ function RuleBuilder({ onSave, onCancel }: { onSave: () => void; onCancel: () =>
       return;
     }
     createRule.mutate(
-      { data: { trigger_type: selected?.type ?? "order", trigger_status: selectedStatus, message_template: message } },
+      { data: { trigger_type: selected?.type ?? "order", trigger_status: selectedStatus, message_template: message, send_image: sendImage } },
       {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getListWhatsappRulesQueryKey() });
@@ -481,16 +492,46 @@ function RuleBuilder({ onSave, onCancel }: { onSave: () => void; onCancel: () =>
                 ))}
               </div>
             </div>
+
+            {/* Send image toggle */}
+            <div className="mt-3 flex items-center justify-between p-2.5 bg-white rounded-lg border border-gray-200">
+              <div className="flex items-center gap-2">
+                <ImageIcon className="w-3.5 h-3.5 text-purple-500" />
+                <div>
+                  <div className="text-xs font-medium text-gray-800">Also send product image</div>
+                  <div className="text-[10px] text-gray-400">Share the ordered product's image along with the message</div>
+                </div>
+              </div>
+              <button
+                onClick={() => setSendImage((v) => !v)}
+                className="shrink-0 transition-colors"
+                title={sendImage ? "Disable image sending" : "Enable image sending"}
+              >
+                {sendImage
+                  ? <ToggleRight className="w-6 h-6 text-purple-500" />
+                  : <ToggleLeft className="w-6 h-6 text-gray-300" />}
+              </button>
+            </div>
             {/* Preview */}
             {message && (
               <div className="mt-3 p-2.5 bg-[#dcf8c6] rounded-xl rounded-tr-sm text-xs text-gray-800 shadow-sm border border-[#c3e6b0]">
                 <div className="text-[9px] text-gray-500 mb-1 font-semibold uppercase">Preview</div>
-                {message
-                  .replace("{customer_name}", "Rahul Sharma")
-                  .replace("{order_name}", "#1084")
-                  .replace("{total}", "₹2,400")
-                  .replace("{tracking_url}", "track.delhivery.com/…")
-                  .replace("{store_name}", "Your Store")}
+                {sendImage && (
+                  <div className="flex items-center gap-1 mb-1.5 text-[10px] text-purple-600 bg-purple-50 rounded px-2 py-1 border border-purple-200">
+                    <ImageIcon className="w-3 h-3" /> Product image will be sent with this message
+                  </div>
+                )}
+                <div className="whitespace-pre-wrap">
+                  {message
+                    .replace(/\{customer_name\}/g, "Rahul Sharma")
+                    .replace(/\{order_name\}/g, "#1084")
+                    .replace(/\{total\}/g, "₹2,400")
+                    .replace(/\{tracking_url\}/g, "track.delhivery.com/ABC123")
+                    .replace(/\{store_name\}/g, "Your Store")
+                    .replace(/\{product_name\}/g, "Black T-Shirt (L)")
+                    .replace(/\{courier_name\}/g, "Delhivery")
+                    .replace(/\{tracking_id\}/g, "123456789012")}
+                </div>
               </div>
             )}
           </div>
@@ -574,11 +615,16 @@ function RulesList() {
               <span className={`text-[10px] px-2 py-0.5 rounded-full border font-medium uppercase ${TYPE_COLOR[rule.trigger_type] || "bg-gray-100 text-gray-500 border-gray-200"}`}>
                 {rule.trigger_type}
               </span>
+              {rule.send_image && (
+                <span className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-purple-50 text-purple-600 border border-purple-200 font-medium">
+                  <ImageIcon className="w-2.5 h-2.5" /> Image
+                </span>
+              )}
               {!rule.enabled && (
                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 border border-gray-200">Disabled</span>
               )}
             </div>
-            <div className="mt-1.5 text-xs text-gray-500 bg-[#dcf8c6]/60 px-2.5 py-1.5 rounded-lg rounded-tr-sm border border-[#c3e6b0]/50 font-mono line-clamp-2">
+            <div className="mt-1.5 text-xs text-gray-500 bg-[#dcf8c6]/60 px-2.5 py-1.5 rounded-lg rounded-tr-sm border border-[#c3e6b0]/50 font-mono line-clamp-2 whitespace-pre-wrap">
               {rule.message_template}
             </div>
           </div>
