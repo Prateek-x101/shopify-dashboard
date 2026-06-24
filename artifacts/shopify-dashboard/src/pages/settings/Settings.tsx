@@ -107,6 +107,40 @@ function GeneralTab() {
 }
 
 /* ───────────────────────────────────────────────────────────────
+   QR Code Panel — smooth fade-in on load
+─────────────────────────────────────────────────────────────── */
+function QrPanel({ qrDataUrl, onRefresh, refreshPending }: { qrDataUrl: string; onRefresh: () => void; refreshPending: boolean }) {
+  const [loaded, setLoaded] = useState(false);
+
+  return (
+    <div className="flex flex-col items-center gap-4 py-2">
+      <div className="text-sm text-gray-700 font-medium text-center">
+        Scan with WhatsApp on your phone
+      </div>
+      <div className="p-3 bg-white rounded-xl border-2 border-[#25d366]/30 shadow-sm relative">
+        {!loaded && (
+          <div className="w-48 h-48 flex items-center justify-center">
+            <Loader2 className="w-6 h-6 animate-spin text-gray-300" />
+          </div>
+        )}
+        <img
+          src={qrDataUrl}
+          alt="WhatsApp QR Code"
+          onLoad={() => setLoaded(true)}
+          className={`w-48 h-48 transition-opacity duration-500 ${loaded ? "opacity-100" : "opacity-0 absolute inset-3"}`}
+        />
+      </div>
+      <div className="text-xs text-gray-500 text-center max-w-xs">
+        Open WhatsApp → Menu → Linked Devices → Link a Device → Scan this QR code
+      </div>
+      <Button variant="outline" size="sm" onClick={onRefresh} disabled={refreshPending}>
+        <RefreshCw className="w-3.5 h-3.5 mr-1.5" /> Refresh QR
+      </Button>
+    </div>
+  );
+}
+
+/* ───────────────────────────────────────────────────────────────
    WhatsApp Connection Card
 ─────────────────────────────────────────────────────────────── */
 function WhatsAppConnectionCard() {
@@ -180,20 +214,7 @@ function WhatsAppConnectionCard() {
             </Button>
           </div>
         ) : status?.state === "qr_ready" && status.qr_data_url ? (
-          <div className="flex flex-col items-center gap-4 py-2">
-            <div className="text-sm text-gray-700 font-medium text-center">
-              Scan with WhatsApp on your phone
-            </div>
-            <div className="p-3 bg-white rounded-xl border-2 border-[#25d366]/30 shadow-sm">
-              <img src={status.qr_data_url} alt="WhatsApp QR Code" className="w-48 h-48" />
-            </div>
-            <div className="text-xs text-gray-500 text-center max-w-xs">
-              Open WhatsApp → Menu → Linked Devices → Link a Device → Scan this QR code
-            </div>
-            <Button variant="outline" size="sm" onClick={handleConnect} disabled={connect.isPending}>
-              <RefreshCw className="w-3.5 h-3.5 mr-1.5" /> Refresh QR
-            </Button>
-          </div>
+          <QrPanel qrDataUrl={status.qr_data_url} onRefresh={handleConnect} refreshPending={connect.isPending} />
         ) : (
           <div className="flex flex-col items-center gap-4 py-4">
             <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center">
