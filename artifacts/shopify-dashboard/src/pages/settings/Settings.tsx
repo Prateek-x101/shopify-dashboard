@@ -10,7 +10,7 @@ import {
   useCreateWhatsappRule, useDeleteWhatsappRule, useToggleWhatsappRule,
   useGetShopifyStatuses, getGetShopifyStatusesQueryKey,
 } from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -21,6 +21,8 @@ import {
   CheckCircle2, XCircle, Plus, Trash2, ToggleLeft, ToggleRight,
   Wifi, WifiOff, Loader2, Smartphone, RefreshCw, Zap,
 } from "lucide-react";
+
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 /* ── Tab type ─────────────────────────────────────────────────── */
 type Tab = "general" | "whatsapp";
@@ -39,6 +41,92 @@ const VARS = ["{customer_name}", "{order_name}", "{total}", "{tracking_url}", "{
    General Settings Tab
 ─────────────────────────────────────────────────────────────── */
 const storeFormSchema = z.object({ store_url: z.string().min(1, "Store URL is required") });
+
+function ShiprocketStatusCard() {
+  const { data, isLoading, refetch, isFetching } = useQuery<{
+    configured: boolean; connected: boolean; email?: string; error?: string;
+  }>({
+    queryKey: ["shiprocket-status"],
+    queryFn: async () => {
+      const res = await fetch(`${BASE}/api/shiprocket/status`);
+      if (!res.ok) throw new Error("Failed to fetch");
+      return res.json();
+    },
+    refetchInterval: 60_000,
+  });
+
+  return (
+    <Card className="shadow-sm border-gray-200 max-w-xl">
+      <CardHeader className="pb-3 border-b border-gray-100">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-5 h-5 rounded bg-orange-500 flex items-center justify-center">
+              <span className="text-white text-[10px] font-bold">SR</span>
+            </div>
+            <CardTitle className="text-base">Shiprocket</CardTitle>
+          </div>
+          <button
+            onClick={() => refetch()}
+            disabled={isFetching}
+            className="text-gray-400 hover:text-gray-600 transition-colors"
+            title="Refresh"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? "animate-spin" : ""}`} />
+          </button>
+        </div>
+        <CardDescription>Live delivery tracking via Shiprocket API</CardDescription>
+      </CardHeader>
+      <CardContent className="pt-4 space-y-3">
+        {isLoading ? (
+          <div className="flex items-center gap-2 text-sm text-gray-400">
+            <Loader2 className="w-4 h-4 animate-spin" /> Checking connection…
+          </div>
+        ) : (
+          <>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-gray-700">Status:</span>
+              {data?.connected ? (
+                <Badge variant="outline" className="bg-[#e2f1ea] text-[#00604b] border-[#bedbd0]">
+                  <CheckCircle2 className="w-3 h-3 mr-1" /> Connected
+                </Badge>
+              ) : data?.configured ? (
+                <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
+                  <XCircle className="w-3 h-3 mr-1" /> Auth Failed
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
+                  <XCircle className="w-3 h-3 mr-1" /> Not Configured
+                </Badge>
+              )}
+            </div>
+            {data?.email && (
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-gray-700">Account:</span>
+                <span className="text-sm text-gray-500">{data.email}</span>
+              </div>
+            )}
+            {data?.error && (
+              <div className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2 border border-red-100">
+                {data.error}
+              </div>
+            )}
+            {data?.connected && (
+              <div className="text-xs text-gray-400">
+                Delivery statuses auto-refresh every 3 minutes on the Orders page.
+              </div>
+            )}
+            {!data?.configured && (
+              <div className="text-xs text-gray-400 bg-gray-50 rounded-lg px-3 py-2">
+                Set <code className="font-mono">SHIPROCKET_EMAIL</code> and{" "}
+                <code className="font-mono">SHIPROCKET_PASSWORD</code> in Secrets to enable live tracking.
+              </div>
+            )}
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
 
 function GeneralTab() {
   const queryClient = useQueryClient();
@@ -67,42 +155,46 @@ function GeneralTab() {
   if (isLoading) return <div className="py-8 text-center text-gray-400 text-sm">Loading…</div>;
 
   return (
-    <Card className="shadow-sm border-gray-200 max-w-xl">
-      <CardHeader>
-        <CardTitle className="text-base">Store Connection</CardTitle>
-        <CardDescription>Configure your Shopify store URL to sync orders.</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-5">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-gray-700">API Status:</span>
-          {settings?.api_configured ? (
-            <Badge variant="outline" className="bg-[#e2f1ea] text-[#00604b] border-[#bedbd0]">
-              <CheckCircle2 className="w-3 h-3 mr-1" /> Configured
-            </Badge>
-          ) : (
-            <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
-              <XCircle className="w-3 h-3 mr-1" /> Not Configured
-            </Badge>
-          )}
-        </div>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField control={form.control} name="store_url" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Shopify Store URL</FormLabel>
-                <FormControl>
-                  <Input placeholder="your-store.myshopify.com" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )} />
-            <Button type="submit" disabled={updateSettings.isPending} className="bg-[#008060] hover:bg-[#006e52]">
-              {updateSettings.isPending ? "Saving…" : "Save"}
-            </Button>
-          </form>
-        </Form>
-      </CardContent>
-    </Card>
+    <div className="space-y-5 max-w-xl">
+      <Card className="shadow-sm border-gray-200">
+        <CardHeader>
+          <CardTitle className="text-base">Store Connection</CardTitle>
+          <CardDescription>Configure your Shopify store URL to sync orders.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-gray-700">API Status:</span>
+            {settings?.api_configured ? (
+              <Badge variant="outline" className="bg-[#e2f1ea] text-[#00604b] border-[#bedbd0]">
+                <CheckCircle2 className="w-3 h-3 mr-1" /> Configured
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
+                <XCircle className="w-3 h-3 mr-1" /> Not Configured
+              </Badge>
+            )}
+          </div>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormField control={form.control} name="store_url" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Shopify Store URL</FormLabel>
+                  <FormControl>
+                    <Input placeholder="your-store.myshopify.com" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <Button type="submit" disabled={updateSettings.isPending} className="bg-[#008060] hover:bg-[#006e52]">
+                {updateSettings.isPending ? "Saving…" : "Save"}
+              </Button>
+            </form>
+          </Form>
+        </CardContent>
+      </Card>
+
+      <ShiprocketStatusCard />
+    </div>
   );
 }
 

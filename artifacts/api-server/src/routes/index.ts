@@ -4,6 +4,7 @@ import ordersRouter from "./orders";
 import eventsRouter from "./events";
 import settingsRouter from "./settings";
 import whatsappRouter from "./whatsapp";
+import shiprocketRouter from "./shiprocket";
 
 const router: IRouter = Router();
 
@@ -12,5 +13,6 @@ router.use(eventsRouter);
 router.use(ordersRouter);
 router.use(settingsRouter);
 router.use(whatsappRouter);
+router.use(shiprocketRouter);
 
 export default router;
