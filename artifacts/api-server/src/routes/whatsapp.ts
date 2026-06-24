@@ -61,8 +61,13 @@ let waPhoneNumber: string | null = null;
 let waQrDataUrl: string | null = null;
 let waClient: Client | null = null;
 let waInitLock = false;
-const rules: Rule[] = [];
+export const rules: Rule[] = [];
 let ruleCounter = 1;
+
+// ── Exported helpers for automation loop ─────────────────────────
+export function getWaState() { return waState; }
+export function getWaClient() { return waClient; }
+export { formatPhoneForWhatsApp };
 
 // ── WhatsApp Client factory ───────────────────────────────────────
 async function startWhatsAppClient(): Promise<void> {

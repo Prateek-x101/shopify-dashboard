@@ -347,6 +347,9 @@ function RuleBuilder({ onSave, onCancel }: { onSave: () => void; onCancel: () =>
   const [buttons, setButtons] = useState<{ id: string; body: string }[]>([]);
   const [footer, setFooter] = useState("");
   const [showButtonsPanel, setShowButtonsPanel] = useState(false);
+  const [showTestInput, setShowTestInput] = useState(false);
+  const [testPhone, setTestPhone] = useState("");
+  const [testSending, setTestSending] = useState(false);
 
   const statuses = statusesData?.statuses ?? [];
   const filtered = filterType === "all" ? statuses : statuses.filter((s) => s.type === filterType);
@@ -617,6 +620,86 @@ function RuleBuilder({ onSave, onCancel }: { onSave: () => void; onCancel: () =>
                         {btn.body}
                       </span>
                     ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Test send button */}
+            {message && (
+              <div className="mt-3">
+                {!showTestInput ? (
+                  <button
+                    onClick={() => setShowTestInput(true)}
+                    className="w-full flex items-center justify-center gap-2 py-2 px-3 text-xs font-medium text-[#075E54] border border-[#25d366]/50 rounded-lg bg-white hover:bg-[#25d366]/5 transition-colors"
+                  >
+                    <Smartphone className="w-3.5 h-3.5" />
+                    Test — Send to my number
+                  </button>
+                ) : (
+                  <div className="p-3 bg-white rounded-lg border border-[#25d366]/40 space-y-2">
+                    <div className="text-[10px] font-semibold text-gray-500 uppercase">Send test to phone</div>
+                    <div className="flex gap-2">
+                      <input
+                        type="tel"
+                        value={testPhone}
+                        onChange={(e) => setTestPhone(e.target.value)}
+                        placeholder="e.g. 9876543210 or +919876543210"
+                        className="flex-1 text-xs border border-gray-200 rounded px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#25d366]/30 focus:border-[#25d366]"
+                      />
+                      <button
+                        disabled={!testPhone.trim() || testSending}
+                        onClick={async () => {
+                          if (!testPhone.trim() || !message) return;
+                          setTestSending(true);
+                          try {
+                            const rendered = message
+                              .replace(/\{customer_name\}/g, "Rahul Sharma")
+                              .replace(/\{order_name\}/g, "#1084")
+                              .replace(/\{total\}/g, "₹2,400")
+                              .replace(/\{tracking_url\}/g, "https://shiprocket.co/tracking/TEST123")
+                              .replace(/\{store_name\}/g, "Your Store")
+                              .replace(/\{product_name\}/g, "Black T-Shirt (L)")
+                              .replace(/\{courier_name\}/g, "Delhivery")
+                              .replace(/\{tracking_id\}/g, "123456789012");
+                            const res = await fetch(`${BASE}/api/whatsapp/send-message`, {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({
+                                to_phone: testPhone.trim(),
+                                message: rendered,
+                                order_id: "test-preview",
+                                buttons: showButtonsPanel ? buttons.filter(b => b.body.trim()) : [],
+                                footer: footer.trim() || undefined,
+                              }),
+                            });
+                            if (res.ok) {
+                              toast.success("Test message sent! Check your WhatsApp.");
+                              setShowTestInput(false);
+                              setTestPhone("");
+                            } else {
+                              const err = await res.json().catch(() => ({}));
+                              toast.error((err as { error?: string }).error ?? "Failed to send test");
+                            }
+                          } catch {
+                            toast.error("Network error while sending test");
+                          } finally {
+                            setTestSending(false);
+                          }
+                        }}
+                        className="px-3 py-1.5 text-xs bg-[#075E54] text-white rounded font-medium hover:bg-[#064c44] disabled:opacity-40 flex items-center gap-1.5 transition-colors"
+                      >
+                        {testSending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Smartphone className="w-3 h-3" />}
+                        Send
+                      </button>
+                      <button
+                        onClick={() => { setShowTestInput(false); setTestPhone(""); }}
+                        className="px-2 py-1.5 text-xs text-gray-400 hover:text-gray-600 transition-colors"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                    <div className="text-[9px] text-gray-400">WhatsApp must be connected in Settings → WhatsApp tab. Sample data will be used for variables.</div>
                   </div>
                 )}
               </div>
