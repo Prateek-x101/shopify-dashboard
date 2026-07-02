@@ -8,6 +8,11 @@
 
 export interface Settings {
   store_url: string;
+  shopify_access_token: string;
+  shiprocket_email: string;
+  shiprocket_password: string;
+  email_user: string;
+  email_pass: string;
   api_configured: boolean;
   /** @nullable */
   store_name?: string | null;

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { Client, NoAuth, MessageMedia, Buttons } from "whatsapp-web.js";
+import { Client, LocalAuth, MessageMedia, Buttons } from "whatsapp-web.js";
 import QRCode from "qrcode";
 import { CreateWhatsappRuleBody, ToggleWhatsappRuleBody } from "@workspace/api-zod";
 
@@ -85,9 +85,9 @@ async function startWhatsAppClient(): Promise<void> {
   waPhoneNumber = null;
 
   const client = new Client({
-    authStrategy: new NoAuth(),
+    authStrategy: new LocalAuth(),
     puppeteer: {
-      executablePath: CHROMIUM_PATH,
+      ...(process.platform !== "win32" && { executablePath: CHROMIUM_PATH }),
       headless: true,
       args: [
         "--no-sandbox",
@@ -96,12 +96,14 @@ async function startWhatsAppClient(): Promise<void> {
         "--disable-gpu",
         "--no-first-run",
         "--no-zygote",
-        "--single-process",
         "--disable-extensions",
         "--disable-background-networking",
         "--disable-default-apps",
         "--mute-audio",
         "--no-default-browser-check",
+        "--disable-background-timer-throttling",
+        "--disable-backgrounding-occluded-windows",
+        "--disable-renderer-backgrounding",
       ],
     },
   });
@@ -269,7 +271,7 @@ router.post("/whatsapp/send-message", async (req, res) => {
             const contentType = imgRes.headers.get("content-type") || "image/jpeg";
             const ext = contentType.split("/")[1]?.split(";")[0] || "jpg";
             const media = new MessageMedia(contentType, buffer.toString("base64"), `product.${ext}`);
-            const btnMsg = new Buttons(media, buttons.slice(0, 3).map((b) => ({ id: b.id, body: b.body })), message, footer ?? "");
+            const btnMsg = new Buttons(media as any, buttons.slice(0, 3).map((b) => ({ id: b.id, body: b.body })), message, footer ?? "");
             await waClient.sendMessage(chatId, btnMsg);
           } else {
             const btnMsg = new Buttons(message, buttons.slice(0, 3).map((b) => ({ id: b.id, body: b.body })), "", footer ?? "");

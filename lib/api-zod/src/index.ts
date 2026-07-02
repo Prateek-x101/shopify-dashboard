@@ -1,2 +1,30 @@
 export * from "./generated/api";
-export * from "./generated/types";
+
+export type {
+  CreateWhatsAppRuleBody,
+  Customer,
+  EmailMessage,
+  EmailMessagesResponse,
+  HealthStatus,
+  LineItem,
+  ListOrdersParams,
+  Order,
+  OrderAddress,
+  OrderEvent,
+  OrderEventsResponse,
+  OrderListResponse,
+  OrderListResponsePageInfo,
+  OrdersSummary,
+  SendWhatsAppMessageBody,
+  Settings,
+  SettingsInput,
+  ShopifyStatus,
+  ShopifyStatusesResponse,
+  ToggleRuleBody,
+  WhatsAppButton,
+  WhatsAppMessage,
+  WhatsAppMessagesResponse,
+  WhatsAppRule,
+  WhatsAppRulesResponse,
+  WhatsAppStatus,
+} from "./generated/types";

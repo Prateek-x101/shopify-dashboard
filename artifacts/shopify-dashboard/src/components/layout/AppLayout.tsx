@@ -28,7 +28,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
             href="/"
             data-testid="nav-orders"
             className={`flex items-center gap-3 px-2.5 py-2 rounded-md transition-colors ${
-              location === "/" || location.startsWith("/orders")
+              (location === "/" || location.startsWith("/orders")) && location !== "/abandoned-checkouts"
                 ? "bg-white/15 text-white font-medium"
                 : "text-gray-300 hover:bg-white/8 hover:text-white"
             } ${collapsed ? "justify-center" : ""}`}
@@ -37,6 +37,38 @@ export function AppLayout({ children }: { children: ReactNode }) {
             <Package className="w-4 h-4 shrink-0" />
             {!collapsed && <span>Orders</span>}
           </Link>
+
+          {!collapsed ? (
+            <div className="pl-7 pr-2 pb-1 space-y-0.5">
+              <Link
+                href="/abandoned-checkouts"
+                data-testid="nav-abandoned"
+                className={`flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs transition-colors ${
+                  location === "/abandoned-checkouts"
+                    ? "bg-[#008060]/20 text-[#008060] font-medium"
+                    : "text-gray-400 hover:bg-white/5 hover:text-white"
+                }`}
+              >
+                <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                  location === "/abandoned-checkouts" ? "bg-[#008060]" : "bg-gray-500"
+                }`} />
+                <span>Abandoned checkouts</span>
+              </Link>
+            </div>
+          ) : (
+            <Link
+              href="/abandoned-checkouts"
+              data-testid="nav-abandoned-collapsed"
+              className={`flex items-center gap-3 px-2.5 py-2 rounded-md transition-colors ${
+                location === "/abandoned-checkouts"
+                  ? "bg-white/15 text-white font-medium"
+                  : "text-gray-300 hover:bg-white/8 hover:text-white"
+              } justify-center`}
+              title="Abandoned checkouts"
+            >
+              <ShoppingCart className="w-4 h-4 shrink-0" />
+            </Link>
+          )}
 
           <Link
             href="/settings"

@@ -311,6 +311,84 @@ paths:
               schema:
                 $ref: "#/components/schemas/Settings"
 
+  /email/send:
+    post:
+      operationId: sendEmail
+      tags: [email]
+      summary: Send a manual email to a customer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendEmailBody"
+      responses:
+        "200":
+          description: Email sent successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmailMessage"
+        "400":
+          description: Bad request
+        "503":
+          description: Email service not configured
+
+  /email/messages/{order_id}:
+    get:
+      operationId: getEmailMessages
+      tags: [email]
+      summary: Get sent email history for an order
+      parameters:
+        - in: path
+          name: order_id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of sent emails
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmailMessagesResponse"
+
+  /abandoned-checkouts:
+    get:
+      operationId: getAbandonedCheckouts
+      tags: [checkouts]
+      summary: Get all abandoned checkouts (Shopify + Shiprocket Webhooks)
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AbandonedCheckoutsResponse"
+
+  /webhooks/abandoned-cart:
+    post:
+      operationId: receiveAbandonedCartWebhook
+      tags: [checkouts]
+      summary: Webhook receiver for Shiprocket/Fastr abandoned checkouts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Webhook received successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+
 components:
   schemas:
     HealthStatus:
@@ -719,12 +797,27 @@ components:
       properties:
         store_url:
           type: string
+        shopify_access_token:
+          type: string
+        shiprocket_email:
+          type: string
+        shiprocket_password:
+          type: string
+        email_user:
+          type: string
+        email_pass:
+          type: string
         api_configured:
           type: boolean
         store_name:
           type: ["string", "null"]
       required:
         - store_url
+        - shopify_access_token
+        - shiprocket_email
+        - shiprocket_password
+        - email_user
+        - email_pass
         - api_configured
 
     SettingsInput:
@@ -732,5 +825,145 @@ components:
       properties:
         store_url:
           type: string
+        shopify_access_token:
+          type: string
+        shiprocket_email:
+          type: string
+        shiprocket_password:
+          type: string
+        email_user:
+          type: string
+        email_pass:
+          type: string
       required:
         - store_url
+        - shopify_access_token
+        - shiprocket_email
+        - shiprocket_password
+        - email_user
+        - email_pass
+
+    SendEmailBody:
+      type: object
+      properties:
+        to_email:
+          type: string
+        subject:
+          type: string
+        body:
+          type: string
+        order_id:
+          type: string
+      required:
+        - to_email
+        - subject
+        - body
+        - order_id
+
+    EmailMessage:
+      type: object
+      properties:
+        id:
+          type: string
+        order_id:
+          type: string
+        to_email:
+          type: string
+        subject:
+          type: string
+        body:
+          type: string
+        timestamp:
+          type: string
+      required:
+        - id
+        - order_id
+        - to_email
+        - subject
+        - body
+        - timestamp
+
+    EmailMessagesResponse:
+      type: object
+      properties:
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/EmailMessage"
+      required:
+        - messages
+
+    AbandonedCheckoutLineItem:
+      type: object
+      properties:
+        title:
+          type: string
+        quantity:
+          type: number
+        price:
+          type: string
+        variant_title:
+          type: ["string", "null"]
+        sku:
+          type: ["string", "null"]
+      required:
+        - title
+        - quantity
+        - price
+
+    AbandonedCheckoutCustomer:
+      type: object
+      properties:
+        first_name:
+          type: ["string", "null"]
+        last_name:
+          type: ["string", "null"]
+        email:
+          type: ["string", "null"]
+        phone:
+          type: ["string", "null"]
+
+    AbandonedCheckout:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        created_at:
+          type: string
+        completed_at:
+          type: ["string", "null"]
+        abandoned_checkout_url:
+          type: ["string", "null"]
+        total_price:
+          type: string
+        currency:
+          type: string
+        customer:
+          $ref: "#/components/schemas/AbandonedCheckoutCustomer"
+        line_items:
+          type: array
+          items:
+            $ref: "#/components/schemas/AbandonedCheckoutLineItem"
+        source:
+          type: string
+          enum: [shopify, shiprocket]
+      required:
+        - id
+        - name
+        - created_at
+        - total_price
+        - currency
+        - source
+        - line_items
+
+    AbandonedCheckoutsResponse:
+      type: object
+      properties:
+        checkouts:
+          type: array
+          items:
+            $ref: "#/components/schemas/AbandonedCheckout"
+      required:
+        - checkouts

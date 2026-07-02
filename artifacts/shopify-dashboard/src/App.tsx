@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppLayout } from "@/components/layout/AppLayout";
 import Dashboard from "@/pages/orders/Dashboard";
 import OrderDetail from "@/pages/orders/OrderDetail";
+import AbandonedCheckouts from "@/pages/orders/AbandonedCheckouts";
 import SettingsPage from "@/pages/settings/Settings";
 import NotFound from "@/pages/not-found";
 
@@ -17,6 +18,7 @@ function Router() {
         <Route path="/" component={Dashboard} />
         <Route path="/orders/:id" component={OrderDetail} />
         <Route path="/settings" component={SettingsPage} />
+        <Route path="/abandoned-checkouts" component={AbandonedCheckouts} />
         <Route component={NotFound} />
       </Switch>
     </AppLayout>

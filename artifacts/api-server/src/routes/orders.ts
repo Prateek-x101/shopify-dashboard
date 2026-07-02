@@ -3,21 +3,20 @@ import {
   ListOrdersQueryParams,
   GetOrderParams,
 } from "@workspace/api-zod";
+import { config } from "../config";
 
 const router = Router();
 
-const SHOPIFY_STORE = process.env.SHOPIFY_STORE_URL ?? "fccevc-p1.myshopify.com";
-const SHOPIFY_TOKEN = process.env.SHOPIFY_CUSTOM_APP_ACCESS_TOKEN ?? "";
 const SHOPIFY_API_VERSION = "2024-01";
 
 function shopifyUrl(path: string) {
-  return `https://${SHOPIFY_STORE}/admin/api/${SHOPIFY_API_VERSION}${path}`;
+  return `https://${config.storeUrl}/admin/api/${SHOPIFY_API_VERSION}${path}`;
 }
 
 async function shopifyFetch(path: string) {
   const res = await fetch(shopifyUrl(path), {
     headers: {
-      "X-Shopify-Access-Token": SHOPIFY_TOKEN,
+      "X-Shopify-Access-Token": config.shopifyAccessToken,
       "Content-Type": "application/json",
     },
   });
@@ -77,7 +76,7 @@ router.get("/orders", async (req, res) => {
 
   const shopifyRes = await fetch(shopifyUrl(`/orders.json?${params}`), {
     headers: {
-      "X-Shopify-Access-Token": SHOPIFY_TOKEN,
+      "X-Shopify-Access-Token": config.shopifyAccessToken,
       "Content-Type": "application/json",
     },
   });
@@ -153,13 +152,13 @@ router.get("/orders/summary", async (req, res) => {
       shopifyUrl(
         `/orders.json?status=any&created_at_min=${todayStart.toISOString()}&fields=id,line_items,fulfillment_status,financial_status&limit=250`
       ),
-      { headers: { "X-Shopify-Access-Token": SHOPIFY_TOKEN } }
+      { headers: { "X-Shopify-Access-Token": config.shopifyAccessToken } }
     ),
     fetch(
       shopifyUrl(
         `/orders.json?status=any&created_at_min=${yesterdayStart.toISOString()}&created_at_max=${todayStart.toISOString()}&fields=id,line_items,fulfillment_status&limit=250`
       ),
-      { headers: { "X-Shopify-Access-Token": SHOPIFY_TOKEN } }
+      { headers: { "X-Shopify-Access-Token": config.shopifyAccessToken } }
     ),
   ]);
 

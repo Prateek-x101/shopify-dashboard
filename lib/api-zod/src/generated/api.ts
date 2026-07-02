@@ -370,6 +370,11 @@ export const GetWhatsappMessagesResponse = zod.object({
  */
 export const GetSettingsResponse = zod.object({
   "store_url": zod.string(),
+  "shopify_access_token": zod.string(),
+  "shiprocket_email": zod.string(),
+  "shiprocket_password": zod.string(),
+  "email_user": zod.string(),
+  "email_pass": zod.string(),
   "api_configured": zod.boolean(),
   "store_name": zod.string().nullish()
 })
@@ -379,13 +384,102 @@ export const GetSettingsResponse = zod.object({
  * @summary Update settings
  */
 export const UpdateSettingsBody = zod.object({
-  "store_url": zod.string()
+  "store_url": zod.string(),
+  "shopify_access_token": zod.string(),
+  "shiprocket_email": zod.string(),
+  "shiprocket_password": zod.string(),
+  "email_user": zod.string(),
+  "email_pass": zod.string()
 })
 
 export const UpdateSettingsResponse = zod.object({
   "store_url": zod.string(),
+  "shopify_access_token": zod.string(),
+  "shiprocket_email": zod.string(),
+  "shiprocket_password": zod.string(),
+  "email_user": zod.string(),
+  "email_pass": zod.string(),
   "api_configured": zod.boolean(),
   "store_name": zod.string().nullish()
+})
+
+
+/**
+ * @summary Send a manual email to a customer
+ */
+export const SendEmailBody = zod.object({
+  "to_email": zod.string(),
+  "subject": zod.string(),
+  "body": zod.string(),
+  "order_id": zod.string()
+})
+
+export const SendEmailResponse = zod.object({
+  "id": zod.string(),
+  "order_id": zod.string(),
+  "to_email": zod.string(),
+  "subject": zod.string(),
+  "body": zod.string(),
+  "timestamp": zod.string()
+})
+
+
+/**
+ * @summary Get sent email history for an order
+ */
+export const GetEmailMessagesParams = zod.object({
+  "order_id": zod.coerce.string()
+})
+
+export const GetEmailMessagesResponse = zod.object({
+  "messages": zod.array(zod.object({
+  "id": zod.string(),
+  "order_id": zod.string(),
+  "to_email": zod.string(),
+  "subject": zod.string(),
+  "body": zod.string(),
+  "timestamp": zod.string()
+}))
+})
+
+
+/**
+ * @summary Get all abandoned checkouts (Shopify + Shiprocket Webhooks)
+ */
+export const GetAbandonedCheckoutsResponse = zod.object({
+  "checkouts": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "created_at": zod.string(),
+  "completed_at": zod.string().nullish(),
+  "abandoned_checkout_url": zod.string().nullish(),
+  "total_price": zod.string(),
+  "currency": zod.string(),
+  "customer": zod.object({
+  "first_name": zod.string().nullish(),
+  "last_name": zod.string().nullish(),
+  "email": zod.string().nullish(),
+  "phone": zod.string().nullish()
+}).optional(),
+  "line_items": zod.array(zod.object({
+  "title": zod.string(),
+  "quantity": zod.number(),
+  "price": zod.string(),
+  "variant_title": zod.string().nullish(),
+  "sku": zod.string().nullish()
+})),
+  "source": zod.enum(['shopify', 'shiprocket'])
+}))
+})
+
+
+/**
+ * @summary Webhook receiver for Shiprocket/Fastr abandoned checkouts
+ */
+export const ReceiveAbandonedCartWebhookBody = zod.record(zod.string(), zod.unknown())
+
+export const ReceiveAbandonedCartWebhookResponse = zod.object({
+  "success": zod.boolean().optional()
 })
 
 

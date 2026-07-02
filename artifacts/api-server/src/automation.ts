@@ -6,11 +6,8 @@
 import { Buttons, MessageMedia } from "whatsapp-web.js";
 import { rules, getWaState, getWaClient, formatPhoneForWhatsApp } from "./routes/whatsapp";
 import { logger } from "./lib/logger";
+import { config } from "./config";
 
-const SHIPROCKET_EMAIL    = process.env.SHIPROCKET_EMAIL ?? "";
-const SHIPROCKET_PASSWORD = process.env.SHIPROCKET_PASSWORD ?? "";
-const SHOPIFY_STORE       = process.env.SHOPIFY_STORE_URL ?? "fccevc-p1.myshopify.com";
-const SHOPIFY_TOKEN       = process.env.SHOPIFY_CUSTOM_APP_ACCESS_TOKEN ?? "";
 const SHOPIFY_API_VERSION = "2024-01";
 const POLL_INTERVAL_MS    = 3 * 60 * 1000; // 3 minutes
 
@@ -47,12 +44,20 @@ const firedSet = new Set<string>();
 let srToken: string | null = null;
 let srTokenExpiry = 0;
 
+let cachedSrEmail: string | null = null;
+
 async function getSrToken(): Promise<string> {
+  if (cachedSrEmail !== config.shiprocketEmail) {
+    srToken = null;
+    srTokenExpiry = 0;
+    cachedSrEmail = config.shiprocketEmail;
+  }
+
   if (srToken && Date.now() < srTokenExpiry) return srToken;
   const res = await fetch("https://apiv2.shiprocket.in/v1/external/auth/login", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email: SHIPROCKET_EMAIL, password: SHIPROCKET_PASSWORD }),
+    body: JSON.stringify({ email: config.shiprocketEmail, password: config.shiprocketPassword }),
   });
   if (!res.ok) throw new Error(`SR auth ${res.status}`);
   const data = (await res.json()) as { token?: string };
@@ -73,8 +78,8 @@ interface ShopifyOrderMin {
 }
 
 async function fetchRecentShopifyOrders(): Promise<ShopifyOrderMin[]> {
-  const url = `https://${SHOPIFY_STORE}/admin/api/${SHOPIFY_API_VERSION}/orders.json?status=any&limit=50&fields=id,name,customer,line_items,total_price,currency`;
-  const res = await fetch(url, { headers: { "X-Shopify-Access-Token": SHOPIFY_TOKEN } });
+  const url = `https://${config.storeUrl}/admin/api/${SHOPIFY_API_VERSION}/orders.json?status=any&limit=50&fields=id,name,customer,line_items,total_price,currency`;
+  const res = await fetch(url, { headers: { "X-Shopify-Access-Token": config.shopifyAccessToken } });
   if (!res.ok) throw new Error(`Shopify ${res.status}`);
   const data = (await res.json()) as { orders: ShopifyOrderMin[] };
   return data.orders ?? [];
@@ -145,7 +150,7 @@ async function sendWa(
             const ct = imgRes.headers.get("content-type") || "image/jpeg";
             const ext = ct.split("/")[1]?.split(";")[0] || "jpg";
             const media = new MessageMedia(ct, buf.toString("base64"), `product.${ext}`);
-            const btnMsg = new Buttons(media, buttons.slice(0, 3) as { id?: string; body: string }[], message, footer ?? "");
+            const btnMsg = new Buttons(media as any, buttons.slice(0, 3) as { id?: string; body: string }[], message, footer ?? "");
             await client.sendMessage(chatId, btnMsg);
             return;
           }
@@ -182,7 +187,7 @@ async function sendWa(
 
 // ── Main poll cycle ───────────────────────────────────────────────
 async function pollCycle() {
-  if (!SHIPROCKET_EMAIL || !SHOPIFY_TOKEN) return;
+  if (!config.shiprocketEmail || !config.shopifyAccessToken) return;
 
   const enabledRules = rules.filter((r) => r.enabled && r.trigger_type === "shipping");
   if (enabledRules.length === 0) return;
@@ -228,7 +233,7 @@ async function pollCycle() {
 
     const phone =
       order.customer?.phone ??
-      (order as Record<string, unknown>).shipping_address as string ?? null;
+      (order as unknown as Record<string, unknown>).shipping_address as string ?? null;
     if (!phone || typeof phone !== "string") {
       logger.warn({ orderId }, "[automation] No phone for order, skipping");
       continue;
@@ -244,7 +249,7 @@ async function pollCycle() {
       order_name: `#${orderId}`,
       total: order.total_price ? `${order.currency ?? "₹"}${order.total_price}` : "",
       tracking_url: sr.awb ? `https://shiprocket.co/tracking/${sr.awb}` : "",
-      store_name: SHOPIFY_STORE.replace(".myshopify.com", ""),
+      store_name: config.storeUrl.replace(".myshopify.com", ""),
       product_name: productName,
       courier_name: sr.courier || "",
       tracking_id: sr.awb || "",

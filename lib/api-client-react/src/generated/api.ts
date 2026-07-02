@@ -20,13 +20,19 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AbandonedCheckoutsResponse,
   CreateWhatsAppRuleBody,
+  EmailMessage,
+  EmailMessagesResponse,
   HealthStatus,
   ListOrdersParams,
   Order,
   OrderEventsResponse,
   OrderListResponse,
   OrdersSummary,
+  ReceiveAbandonedCartWebhook200,
+  ReceiveAbandonedCartWebhookBody,
+  SendEmailBody,
   SendWhatsAppMessageBody,
   Settings,
   SettingsInput,
@@ -1321,5 +1327,301 @@ export const useUpdateSettings = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getUpdateSettingsMutationOptions(options));
+    }
+
+export const getSendEmailUrl = () => {
+
+
+
+
+  return `/api/email/send`
+}
+
+/**
+ * @summary Send a manual email to a customer
+ */
+export const sendEmail = async (sendEmailBody: SendEmailBody, options?: RequestInit): Promise<EmailMessage> => {
+
+  return customFetch<EmailMessage>(getSendEmailUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      sendEmailBody,)
+  }
+);}
+
+
+
+
+export const getSendEmailMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendEmail>>, TError,{data: BodyType<SendEmailBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof sendEmail>>, TError,{data: BodyType<SendEmailBody>}, TContext> => {
+
+const mutationKey = ['sendEmail'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof sendEmail>>, {data: BodyType<SendEmailBody>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  sendEmail(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SendEmailMutationResult = NonNullable<Awaited<ReturnType<typeof sendEmail>>>
+    export type SendEmailMutationBody = BodyType<SendEmailBody>
+    export type SendEmailMutationError = ErrorType<void>
+
+    /**
+ * @summary Send a manual email to a customer
+ */
+export const useSendEmail = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendEmail>>, TError,{data: BodyType<SendEmailBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof sendEmail>>,
+        TError,
+        {data: BodyType<SendEmailBody>},
+        TContext
+      > => {
+      return useMutation(getSendEmailMutationOptions(options));
+    }
+
+export const getGetEmailMessagesUrl = (orderId: string,) => {
+
+
+
+
+  return `/api/email/messages/${orderId}`
+}
+
+/**
+ * @summary Get sent email history for an order
+ */
+export const getEmailMessages = async (orderId: string, options?: RequestInit): Promise<EmailMessagesResponse> => {
+
+  return customFetch<EmailMessagesResponse>(getGetEmailMessagesUrl(orderId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetEmailMessagesQueryKey = (orderId: string,) => {
+    return [
+    `/api/email/messages/${orderId}`
+    ] as const;
+    }
+
+
+export const getGetEmailMessagesQueryOptions = <TData = Awaited<ReturnType<typeof getEmailMessages>>, TError = ErrorType<unknown>>(orderId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getEmailMessages>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetEmailMessagesQueryKey(orderId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getEmailMessages>>> = ({ signal }) => getEmailMessages(orderId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(orderId), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getEmailMessages>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetEmailMessagesQueryResult = NonNullable<Awaited<ReturnType<typeof getEmailMessages>>>
+export type GetEmailMessagesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get sent email history for an order
+ */
+
+export function useGetEmailMessages<TData = Awaited<ReturnType<typeof getEmailMessages>>, TError = ErrorType<unknown>>(
+ orderId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getEmailMessages>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetEmailMessagesQueryOptions(orderId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetAbandonedCheckoutsUrl = () => {
+
+
+
+
+  return `/api/abandoned-checkouts`
+}
+
+/**
+ * @summary Get all abandoned checkouts (Shopify + Shiprocket Webhooks)
+ */
+export const getAbandonedCheckouts = async ( options?: RequestInit): Promise<AbandonedCheckoutsResponse> => {
+
+  return customFetch<AbandonedCheckoutsResponse>(getGetAbandonedCheckoutsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAbandonedCheckoutsQueryKey = () => {
+    return [
+    `/api/abandoned-checkouts`
+    ] as const;
+    }
+
+
+export const getGetAbandonedCheckoutsQueryOptions = <TData = Awaited<ReturnType<typeof getAbandonedCheckouts>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAbandonedCheckouts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAbandonedCheckoutsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAbandonedCheckouts>>> = ({ signal }) => getAbandonedCheckouts({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAbandonedCheckouts>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAbandonedCheckoutsQueryResult = NonNullable<Awaited<ReturnType<typeof getAbandonedCheckouts>>>
+export type GetAbandonedCheckoutsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get all abandoned checkouts (Shopify + Shiprocket Webhooks)
+ */
+
+export function useGetAbandonedCheckouts<TData = Awaited<ReturnType<typeof getAbandonedCheckouts>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAbandonedCheckouts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAbandonedCheckoutsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getReceiveAbandonedCartWebhookUrl = () => {
+
+
+
+
+  return `/api/webhooks/abandoned-cart`
+}
+
+/**
+ * @summary Webhook receiver for Shiprocket/Fastr abandoned checkouts
+ */
+export const receiveAbandonedCartWebhook = async (receiveAbandonedCartWebhookBody: ReceiveAbandonedCartWebhookBody, options?: RequestInit): Promise<ReceiveAbandonedCartWebhook200> => {
+
+  return customFetch<ReceiveAbandonedCartWebhook200>(getReceiveAbandonedCartWebhookUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      receiveAbandonedCartWebhookBody,)
+  }
+);}
+
+
+
+
+export const getReceiveAbandonedCartWebhookMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof receiveAbandonedCartWebhook>>, TError,{data: BodyType<ReceiveAbandonedCartWebhookBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof receiveAbandonedCartWebhook>>, TError,{data: BodyType<ReceiveAbandonedCartWebhookBody>}, TContext> => {
+
+const mutationKey = ['receiveAbandonedCartWebhook'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof receiveAbandonedCartWebhook>>, {data: BodyType<ReceiveAbandonedCartWebhookBody>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  receiveAbandonedCartWebhook(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReceiveAbandonedCartWebhookMutationResult = NonNullable<Awaited<ReturnType<typeof receiveAbandonedCartWebhook>>>
+    export type ReceiveAbandonedCartWebhookMutationBody = BodyType<ReceiveAbandonedCartWebhookBody>
+    export type ReceiveAbandonedCartWebhookMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Webhook receiver for Shiprocket/Fastr abandoned checkouts
+ */
+export const useReceiveAbandonedCartWebhook = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof receiveAbandonedCartWebhook>>, TError,{data: BodyType<ReceiveAbandonedCartWebhookBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof receiveAbandonedCartWebhook>>,
+        TError,
+        {data: BodyType<ReceiveAbandonedCartWebhookBody>},
+        TContext
+      > => {
+      return useMutation(getReceiveAbandonedCartWebhookMutationOptions(options));
     }
 

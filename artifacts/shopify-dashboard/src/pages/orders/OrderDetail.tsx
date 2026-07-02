@@ -11,6 +11,7 @@ import { formatCurrency, formatDate, formatDateTime } from "@/lib/format";
 import { ArrowLeft, ExternalLink, MapPin, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { WhatsAppChat } from "@/components/orders/WhatsAppChat";
+import { EmailChat } from "@/components/orders/EmailChat";
 
 function verbToLabel(verb: string, args: string[]): string {
   const map: Record<string, string> = {
@@ -348,6 +349,14 @@ export default function OrderDetail() {
           <WhatsAppChat
             customerName={customerName}
             customerPhone={order.customer?.phone ?? order.shipping_address?.phone}
+            orderName={order.name}
+            orderId={id || ""}
+          />
+
+          {/* Email Chat */}
+          <EmailChat
+            customerName={customerName}
+            customerEmail={order.customer?.email}
             orderName={order.name}
             orderId={id || ""}
           />

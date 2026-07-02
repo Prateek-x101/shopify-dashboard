@@ -1,26 +1,32 @@
 import { Router } from "express";
+import { config } from "../config";
 
 const router = Router();
 
-const SHIPROCKET_EMAIL = process.env.SHIPROCKET_EMAIL ?? "";
-const SHIPROCKET_PASSWORD = process.env.SHIPROCKET_PASSWORD ?? "";
 const BASE = "https://apiv2.shiprocket.in/v1/external";
 
 /* ── Token cache ─────────────────────────────────────────────── */
 let cachedToken: string | null = null;
 let tokenExpiry = 0;
+let cachedEmail: string | null = null;
 
 async function getToken(): Promise<string> {
+  if (cachedEmail !== config.shiprocketEmail) {
+    cachedToken = null;
+    tokenExpiry = 0;
+    cachedEmail = config.shiprocketEmail;
+  }
+
   if (cachedToken && Date.now() < tokenExpiry) return cachedToken;
 
-  if (!SHIPROCKET_EMAIL || !SHIPROCKET_PASSWORD) {
+  if (!config.shiprocketEmail || !config.shiprocketPassword) {
     throw new Error("SHIPROCKET_EMAIL / SHIPROCKET_PASSWORD not set");
   }
 
   const res = await fetch(`${BASE}/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email: SHIPROCKET_EMAIL, password: SHIPROCKET_PASSWORD }),
+    body: JSON.stringify({ email: config.shiprocketEmail, password: config.shiprocketPassword }),
   });
 
   if (!res.ok) {
@@ -95,14 +101,14 @@ async function getOrderCache(): Promise<Record<string, ShiprocketOrder>> {
 
 /* ── GET /shiprocket/status ─ connection check ───────────────── */
 router.get("/shiprocket/status", async (_req, res) => {
-  if (!SHIPROCKET_EMAIL || !SHIPROCKET_PASSWORD) {
+  if (!config.shiprocketEmail || !config.shiprocketPassword) {
     res.json({ configured: false, connected: false });
     return;
   }
 
   try {
     await getToken();
-    res.json({ configured: true, connected: true, email: SHIPROCKET_EMAIL });
+    res.json({ configured: true, connected: true, email: config.shiprocketEmail });
   } catch (err) {
     res.json({ configured: true, connected: false, error: (err as Error).message });
   }

@@ -25,7 +25,7 @@ import {
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 /* ── Tab type ─────────────────────────────────────────────────── */
-type Tab = "general" | "whatsapp";
+type Tab = "general" | "whatsapp" | "email";
 
 /* ── Trigger type colours ─────────────────────────────────────── */
 const TYPE_COLOR: Record<string, string> = {
@@ -43,7 +43,12 @@ const VARS = [
 /* ───────────────────────────────────────────────────────────────
    General Settings Tab
 ─────────────────────────────────────────────────────────────── */
-const storeFormSchema = z.object({ store_url: z.string().min(1, "Store URL is required") });
+const storeFormSchema = z.object({
+  store_url: z.string().min(1, "Store URL is required"),
+  shopify_access_token: z.string().min(1, "Shopify Access Token is required"),
+  shiprocket_email: z.string(),
+  shiprocket_password: z.string(),
+});
 
 function ShiprocketStatusCard() {
   const { data, isLoading, refetch, isFetching } = useQuery<{
@@ -138,18 +143,37 @@ function GeneralTab() {
 
   const form = useForm<z.infer<typeof storeFormSchema>>({
     resolver: zodResolver(storeFormSchema),
-    defaultValues: { store_url: "" },
+    defaultValues: {
+      store_url: "",
+      shopify_access_token: "",
+      shiprocket_email: "",
+      shiprocket_password: "",
+    },
   });
 
   useEffect(() => {
-    if (settings) form.reset({ store_url: settings.store_url || "" });
+    if (settings) {
+      form.reset({
+        store_url: settings.store_url || "",
+        shopify_access_token: settings.shopify_access_token || "",
+        shiprocket_email: settings.shiprocket_email || "",
+        shiprocket_password: settings.shiprocket_password || "",
+      });
+    }
   }, [settings, form]);
 
   function onSubmit(values: z.infer<typeof storeFormSchema>) {
-    updateSettings.mutate({ data: values }, {
+    updateSettings.mutate({
+      data: {
+        ...values,
+        email_user: settings?.email_user || "",
+        email_pass: settings?.email_pass || "",
+      }
+    }, {
       onSuccess: (data) => {
         toast.success("Settings updated");
         queryClient.setQueryData(getGetSettingsQueryKey(), data);
+        queryClient.invalidateQueries({ queryKey: ["shiprocket-status"] });
       },
       onError: () => toast.error("Failed to update settings"),
     });
@@ -162,7 +186,7 @@ function GeneralTab() {
       <Card className="shadow-sm border-gray-200">
         <CardHeader>
           <CardTitle className="text-base">Store Connection</CardTitle>
-          <CardDescription>Configure your Shopify store URL to sync orders.</CardDescription>
+          <CardDescription>Configure your Shopify store connection settings.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
           <div className="flex items-center gap-2">
@@ -188,8 +212,35 @@ function GeneralTab() {
                   <FormMessage />
                 </FormItem>
               )} />
+              <FormField control={form.control} name="shopify_access_token" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Shopify Custom App Access Token</FormLabel>
+                  <FormControl>
+                    <Input type="password" placeholder="shpat_..." {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="shiprocket_email" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Shiprocket Email / Username</FormLabel>
+                  <FormControl>
+                    <Input placeholder="email@example.com" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="shiprocket_password" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Shiprocket Password</FormLabel>
+                  <FormControl>
+                    <Input type="password" placeholder="••••••••" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
               <Button type="submit" disabled={updateSettings.isPending} className="bg-[#008060] hover:bg-[#006e52]">
-                {updateSettings.isPending ? "Saving…" : "Save"}
+                {updateSettings.isPending ? "Saving…" : "Save Settings"}
               </Button>
             </form>
           </Form>
@@ -874,6 +925,127 @@ function WhatsAppTab() {
 }
 
 /* ───────────────────────────────────────────────────────────────
+   Email Tab
+─────────────────────────────────────────────────────────────── */
+const emailFormSchema = z.object({
+  email_user: z.string().email("Invalid email address").or(z.literal("")),
+  email_pass: z.string(),
+});
+
+function EmailTab() {
+  const queryClient = useQueryClient();
+  const { data: settings, isLoading } = useGetSettings({ query: { queryKey: getGetSettingsQueryKey() } });
+  const updateSettings = useUpdateSettings();
+
+  const form = useForm<z.infer<typeof emailFormSchema>>({
+    resolver: zodResolver(emailFormSchema),
+    defaultValues: {
+      email_user: "",
+      email_pass: "",
+    },
+  });
+
+  useEffect(() => {
+    if (settings) {
+      form.reset({
+        email_user: settings.email_user || "",
+        email_pass: settings.email_pass || "",
+      });
+    }
+  }, [settings, form]);
+
+  function onSubmit(values: z.infer<typeof emailFormSchema>) {
+    if (!settings) return;
+
+    updateSettings.mutate({
+      data: {
+        store_url: settings.store_url,
+        shopify_access_token: settings.shopify_access_token,
+        shiprocket_email: settings.shiprocket_email,
+        shiprocket_password: settings.shiprocket_password,
+        email_user: values.email_user,
+        email_pass: values.email_pass,
+      }
+    }, {
+      onSuccess: (data) => {
+        toast.success("Email settings updated");
+        queryClient.setQueryData(getGetSettingsQueryKey(), data);
+      },
+      onError: () => toast.error("Failed to update email settings"),
+    });
+  }
+
+  if (isLoading) return <div className="py-8 text-center text-gray-400 text-sm">Loading…</div>;
+
+  const isConfigured = !!settings?.email_user && !!settings?.email_pass;
+
+  return (
+    <div className="space-y-5 max-w-xl">
+      <Card className="shadow-sm border-gray-200">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-base">Gmail SMTP Configuration</CardTitle>
+              <CardDescription>Configure your Gmail account to send order update emails.</CardDescription>
+            </div>
+            {isConfigured ? (
+              <Badge variant="outline" className="bg-[#e2f1ea] text-[#00604b] border-[#bedbd0]">
+                <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Active
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
+                <XCircle className="w-3.5 h-3.5 mr-1" /> Inactive
+              </Badge>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="bg-blue-50 border border-blue-100 rounded-lg p-3 text-xs text-blue-800 space-y-1">
+            <p className="font-semibold">How to setup Gmail App Password:</p>
+            <ol className="list-decimal pl-4 space-y-1">
+              <li>Open your Google Account Settings.</li>
+              <li>Enable <strong>2-Step Verification</strong>.</li>
+              <li>Search for <strong>"App Passwords"</strong> at the top search bar.</li>
+              <li>Create a new App Password (e.g. "Shopify Dashboard").</li>
+              <li>Copy the 16-character code generated and paste it in the Password field below.</li>
+            </ol>
+          </div>
+
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormField control={form.control} name="email_user" render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-xs font-semibold text-gray-700">Gmail Address</FormLabel>
+                  <FormControl>
+                    <Input placeholder="yourname@gmail.com" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+
+              <FormField control={form.control} name="email_pass" render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-xs font-semibold text-gray-700">Gmail App Password</FormLabel>
+                  <FormControl>
+                    <Input type="password" placeholder="xxxx xxxx xxxx xxxx" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+
+              <Button type="submit" disabled={updateSettings.isPending} className="bg-[#008060] hover:bg-[#006e52] text-white">
+                {updateSettings.isPending && <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />}
+                Save Email Settings
+              </Button>
+            </form>
+          </Form>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+/* ───────────────────────────────────────────────────────────────
    Main Page
 ─────────────────────────────────────────────────────────────── */
 export default function SettingsPage() {
@@ -914,9 +1086,23 @@ export default function SettingsPage() {
           </svg>
           WhatsApp
         </button>
+        <button
+          onClick={() => setTab("email")}
+          data-testid="tab-email"
+          className={`flex items-center gap-1.5 px-5 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px ${
+            tab === "email"
+              ? "border-blue-600 text-blue-600"
+              : "border-transparent text-gray-500 hover:text-gray-700"
+          }`}
+        >
+          <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 fill-current" xmlns="http://www.w3.org/2000/svg">
+            <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>
+          </svg>
+          Email (Gmail)
+        </button>
       </div>
 
-      {tab === "general" ? <GeneralTab /> : <WhatsAppTab />}
+      {tab === "general" ? <GeneralTab /> : tab === "whatsapp" ? <WhatsAppTab /> : <EmailTab />}
     </div>
   );
 }

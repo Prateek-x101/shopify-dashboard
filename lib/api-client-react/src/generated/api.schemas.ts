@@ -215,6 +215,11 @@ export interface ShopifyStatusesResponse {
 
 export interface Settings {
   store_url: string;
+  shopify_access_token: string;
+  shiprocket_email: string;
+  shiprocket_password: string;
+  email_user: string;
+  email_pass: string;
   api_configured: boolean;
   /** @nullable */
   store_name?: string | null;
@@ -222,6 +227,79 @@ export interface Settings {
 
 export interface SettingsInput {
   store_url: string;
+  shopify_access_token: string;
+  shiprocket_email: string;
+  shiprocket_password: string;
+  email_user: string;
+  email_pass: string;
+}
+
+export interface SendEmailBody {
+  to_email: string;
+  subject: string;
+  body: string;
+  order_id: string;
+}
+
+export interface EmailMessage {
+  id: string;
+  order_id: string;
+  to_email: string;
+  subject: string;
+  body: string;
+  timestamp: string;
+}
+
+export interface EmailMessagesResponse {
+  messages: EmailMessage[];
+}
+
+export interface AbandonedCheckoutLineItem {
+  title: string;
+  quantity: number;
+  price: string;
+  /** @nullable */
+  variant_title?: string | null;
+  /** @nullable */
+  sku?: string | null;
+}
+
+export interface AbandonedCheckoutCustomer {
+  /** @nullable */
+  first_name?: string | null;
+  /** @nullable */
+  last_name?: string | null;
+  /** @nullable */
+  email?: string | null;
+  /** @nullable */
+  phone?: string | null;
+}
+
+export type AbandonedCheckoutSource = typeof AbandonedCheckoutSource[keyof typeof AbandonedCheckoutSource];
+
+
+export const AbandonedCheckoutSource = {
+  shopify: 'shopify',
+  shiprocket: 'shiprocket',
+} as const;
+
+export interface AbandonedCheckout {
+  id: string;
+  name: string;
+  created_at: string;
+  /** @nullable */
+  completed_at?: string | null;
+  /** @nullable */
+  abandoned_checkout_url?: string | null;
+  total_price: string;
+  currency: string;
+  customer?: AbandonedCheckoutCustomer;
+  line_items: AbandonedCheckoutLineItem[];
+  source: AbandonedCheckoutSource;
+}
+
+export interface AbandonedCheckoutsResponse {
+  checkouts: AbandonedCheckout[];
 }
 
 export type ListOrdersParams = {
@@ -246,5 +324,11 @@ fulfillment_status?: string | null;
  * @nullable
  */
 query?: string | null;
+};
+
+export type ReceiveAbandonedCartWebhookBody = { [key: string]: unknown };
+
+export type ReceiveAbandonedCartWebhook200 = {
+  success?: boolean;
 };
 
