@@ -1,10 +1,10 @@
 import { Router } from "express";
 import fs from "fs";
 import path from "path";
-import { config } from "../config";
+import { config, WORKSPACE_ROOT } from "../config";
 
 const router = Router();
-const CHECKOUTS_FILE = path.join(process.cwd(), "abandoned_checkouts_webhook.json");
+const CHECKOUTS_FILE = path.join(WORKSPACE_ROOT, "abandoned_checkouts_webhook.json");
 
 interface CheckoutCustomer {
   first_name: string | null;

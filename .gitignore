@@ -51,6 +51,7 @@ Thumbs.db
 # local settings and webhooks
 settings.json
 abandoned_checkouts_webhook.json
+whatsapp_rules.json
 .wwebjs_auth/
 .wwebjs_cache/
 

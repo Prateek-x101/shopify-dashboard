@@ -1,7 +1,19 @@
 import fs from "fs";
 import path from "path";
 
-const SETTINGS_FILE = path.join(process.cwd(), "settings.json");
+export function findWorkspaceRoot(startDir: string): string {
+  let dir = startDir;
+  while (dir !== path.dirname(dir)) {
+    if (fs.existsSync(path.join(dir, "pnpm-workspace.yaml"))) {
+      return dir;
+    }
+    dir = path.dirname(dir);
+  }
+  return startDir;
+}
+
+export const WORKSPACE_ROOT = findWorkspaceRoot(__dirname);
+const SETTINGS_FILE = path.join(WORKSPACE_ROOT, "settings.json");
 
 interface Config {
   storeUrl: string;

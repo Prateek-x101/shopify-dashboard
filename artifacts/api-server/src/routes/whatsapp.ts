@@ -2,6 +2,9 @@ import { Router } from "express";
 import { Client, LocalAuth, MessageMedia, Buttons } from "whatsapp-web.js";
 import QRCode from "qrcode";
 import { CreateWhatsappRuleBody, ToggleWhatsappRuleBody } from "@workspace/api-zod";
+import fs from "fs";
+import path from "path";
+import { WORKSPACE_ROOT } from "../config";
 
 const router = Router();
 
@@ -61,8 +64,36 @@ let waPhoneNumber: string | null = null;
 let waQrDataUrl: string | null = null;
 let waClient: Client | null = null;
 let waInitLock = false;
+
+const RULES_FILE = path.join(WORKSPACE_ROOT, "whatsapp_rules.json");
 export const rules: Rule[] = [];
 let ruleCounter = 1;
+
+function loadRules() {
+  try {
+    if (fs.existsSync(RULES_FILE)) {
+      const raw = fs.readFileSync(RULES_FILE, "utf8");
+      const parsed = JSON.parse(raw) as Rule[];
+      rules.length = 0;
+      rules.push(...parsed);
+      if (rules.length > 0) {
+        ruleCounter = Math.max(...rules.map((r) => parseInt(r.id) || 0)) + 1;
+      }
+    }
+  } catch (err) {
+    console.error("Failed to load whatsapp_rules.json:", err);
+  }
+}
+
+function saveRules() {
+  try {
+    fs.writeFileSync(RULES_FILE, JSON.stringify(rules, null, 2), "utf8");
+  } catch (err) {
+    console.error("Failed to save whatsapp_rules.json:", err);
+  }
+}
+
+loadRules();
 
 // ── Exported helpers for automation loop ─────────────────────────
 export function getWaState() { return waState; }
@@ -85,7 +116,9 @@ async function startWhatsAppClient(): Promise<void> {
   waPhoneNumber = null;
 
   const client = new Client({
-    authStrategy: new LocalAuth(),
+    authStrategy: new LocalAuth({
+      dataPath: path.join(WORKSPACE_ROOT, ".wwebjs_auth")
+    }),
     puppeteer: {
       ...(process.platform !== "win32" && { executablePath: CHROMIUM_PATH }),
       headless: true,
@@ -351,6 +384,7 @@ router.post("/whatsapp/rules", (req, res) => {
     created_at: new Date().toISOString(),
   };
   rules.push(rule);
+  saveRules();
   res.status(201).json(rule);
 });
 
@@ -358,6 +392,7 @@ router.delete("/whatsapp/rules/:id", (req, res) => {
   const idx = rules.findIndex((r) => r.id === req.params.id);
   if (idx === -1) { res.status(404).json({ error: "Rule not found" }); return; }
   rules.splice(idx, 1);
+  saveRules();
   res.status(204).send();
 });
 
@@ -367,6 +402,7 @@ router.patch("/whatsapp/rules/:id", (req, res) => {
   const rule = rules.find((r) => r.id === req.params.id);
   if (!rule) { res.status(404).json({ error: "Rule not found" }); return; }
   rule.enabled = parsed.data.enabled;
+  saveRules();
   res.json(rule);
 });
 
