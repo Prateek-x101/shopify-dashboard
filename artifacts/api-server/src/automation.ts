@@ -4,7 +4,8 @@
  */
 
 import { Buttons, MessageMedia } from "whatsapp-web.js";
-import { rules, getWaState, getWaClient, formatPhoneForWhatsApp } from "./routes/whatsapp";
+import { rules, getWaState, getWaClient, formatPhoneForWhatsApp, messagesByOrder } from "./routes/whatsapp";
+import { readStoredCheckouts, writeStoredCheckouts, AbandonedCheckout } from "./routes/checkouts";
 import { logger } from "./lib/logger";
 import { config } from "./config";
 
@@ -267,16 +268,103 @@ async function pollCycle() {
   }
 }
 
+async function processAbandonedCheckouts() {
+  const waClient = getWaClient();
+  if (!waClient || getWaState() !== "connected") return;
+
+  const enabledRules = rules.filter((r) => r.enabled && r.trigger_type === "abandoned_checkout");
+  if (enabledRules.length === 0) return;
+
+  const checkouts = readStoredCheckouts();
+  let updated = false;
+  const now = Date.now();
+
+  for (const c of checkouts) {
+    if (c.completed_at) continue;
+
+    const phone = c.customer?.phone;
+    if (!phone) continue;
+
+    const sentRules = (c as any).sent_rules || {};
+
+    for (const rule of enabledRules) {
+      if (sentRules[rule.id]) continue;
+
+      const delayMs = (rule.delay_minutes || 0) * 60 * 1000;
+      const checkoutCreatedAt = new Date(c.created_at).getTime();
+
+      if (now >= checkoutCreatedAt + delayMs) {
+        const customerName = c.customer
+          ? `${c.customer.first_name || ""} ${c.customer.last_name || ""}`.trim()
+          : "Customer";
+
+        const itemsSummary = c.line_items?.map((item) => `${item.title} (x${item.quantity})`).join(", ") || "";
+
+        const vars: Record<string, string> = {
+          customer_name: customerName,
+          checkout_url: c.abandoned_checkout_url || "",
+          total_price: `${c.currency} ${c.total_price}`,
+          items_summary: itemsSummary,
+        };
+
+        const message = fillTemplate(rule.message_template, vars);
+        logger.info({ checkoutId: c.id, ruleId: rule.id, phone }, "[automation] Firing abandoned checkout rule");
+
+        try {
+          await sendWa(phone, message, {
+            buttons: rule.buttons?.length ? rule.buttons : undefined,
+            footer: rule.footer ?? undefined,
+          });
+
+          // Record in message history
+          const msgId = `msg-rec-${Date.now()}`;
+          const chatMsg = {
+            id: msgId,
+            order_id: c.id,
+            to_phone: phone,
+            message,
+            from: "store" as const,
+            status: "sent" as const,
+            timestamp: new Date().toISOString(),
+          };
+          if (!messagesByOrder[c.id]) messagesByOrder[c.id] = [];
+          messagesByOrder[c.id].push(chatMsg);
+
+          // Mark as sent
+          sentRules[rule.id] = true;
+          (c as any).sent_rules = sentRules;
+          updated = true;
+        } catch (err) {
+          logger.error({ err, checkoutId: c.id }, "[automation] Failed to send recovery WhatsApp");
+        }
+      }
+    }
+  }
+
+  if (updated) {
+    writeStoredCheckouts(checkouts);
+  }
+}
+
 // ── Start the loop ────────────────────────────────────────────────
 export function startAutomationLoop() {
-  logger.info("[automation] Starting polling loop (interval: 3 min)");
+  logger.info("[automation] Starting polling loop (interval: 3 min) and abandoned checkouts recovery loop (interval: 1 min)");
 
   // Initial poll after 30s (give WA client time to connect)
   setTimeout(() => {
     pollCycle().catch((err) => logger.error({ err }, "[automation] initial poll error"));
   }, 30_000);
 
+  // Initial checkouts check after 15s
+  setTimeout(() => {
+    processAbandonedCheckouts().catch((err) => logger.error({ err }, "[automation] initial checkout recovery error"));
+  }, 15_000);
+
   setInterval(() => {
     pollCycle().catch((err) => logger.error({ err }, "[automation] poll error"));
   }, POLL_INTERVAL_MS);
+
+  setInterval(() => {
+    processAbandonedCheckouts().catch((err) => logger.error({ err }, "[automation] checkout recovery error"));
+  }, 60 * 1000); // 1 minute
 }

@@ -21,7 +21,7 @@ interface CheckoutLineItem {
   sku: string | null;
 }
 
-interface AbandonedCheckout {
+export interface AbandonedCheckout {
   id: string;
   name: string;
   created_at: string;
@@ -34,7 +34,7 @@ interface AbandonedCheckout {
   source: "shopify" | "shiprocket";
 }
 
-function readStoredCheckouts(): AbandonedCheckout[] {
+export function readStoredCheckouts(): AbandonedCheckout[] {
   try {
     if (fs.existsSync(CHECKOUTS_FILE)) {
       const raw = fs.readFileSync(CHECKOUTS_FILE, "utf8");
@@ -46,7 +46,7 @@ function readStoredCheckouts(): AbandonedCheckout[] {
   return [];
 }
 
-function writeStoredCheckouts(checkouts: AbandonedCheckout[]): void {
+export function writeStoredCheckouts(checkouts: AbandonedCheckout[]): void {
   try {
     fs.writeFileSync(CHECKOUTS_FILE, JSON.stringify(checkouts, null, 2), "utf8");
   } catch (err) {

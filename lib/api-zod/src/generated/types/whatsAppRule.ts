@@ -18,5 +18,6 @@ export interface WhatsAppRule {
   buttons: WhatsAppButton[];
   /** @nullable */
   footer?: string | null;
+  delay_minutes?: number;
   created_at: string;
 }

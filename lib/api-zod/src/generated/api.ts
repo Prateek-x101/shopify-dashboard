@@ -250,6 +250,7 @@ export const ListWhatsappRulesResponse = zod.object({
   "body": zod.string()
 })),
   "footer": zod.string().nullish(),
+  "delay_minutes": zod.number().optional(),
   "created_at": zod.string()
 }))
 })
@@ -267,7 +268,8 @@ export const CreateWhatsappRuleBody = zod.object({
   "id": zod.string().optional(),
   "body": zod.string()
 })),
-  "footer": zod.string().nullish()
+  "footer": zod.string().nullish(),
+  "delay_minutes": zod.number().optional()
 })
 
 
@@ -303,6 +305,7 @@ export const ToggleWhatsappRuleResponse = zod.object({
   "body": zod.string()
 })),
   "footer": zod.string().nullish(),
+  "delay_minutes": zod.number().optional(),
   "created_at": zod.string()
 })
 

@@ -15,4 +15,5 @@ export interface CreateWhatsAppRuleBody {
   buttons: WhatsAppButton[];
   /** @nullable */
   footer?: string | null;
+  delay_minutes?: number;
 }

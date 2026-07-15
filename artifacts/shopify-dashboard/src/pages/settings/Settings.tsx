@@ -32,12 +32,14 @@ const TYPE_COLOR: Record<string, string> = {
   order:       "bg-blue-100 text-blue-700 border-blue-200",
   fulfillment: "bg-purple-100 text-purple-700 border-purple-200",
   shipping:    "bg-green-100 text-green-700 border-green-200",
+  abandoned_checkout: "bg-orange-100 text-orange-700 border-orange-200",
 };
 
 /* ── Template variable hints ──────────────────────────────────── */
 const VARS = [
   "{customer_name}", "{order_name}", "{total}", "{tracking_url}",
   "{store_name}", "{product_name}", "{courier_name}", "{tracking_id}",
+  "{checkout_url}", "{total_price}", "{items_summary}",
 ];
 
 /* ───────────────────────────────────────────────────────────────
@@ -454,6 +456,7 @@ function RuleBuilder({ onSave, onCancel }: { onSave: () => void; onCancel: () =>
   const [showTestInput, setShowTestInput] = useState(false);
   const [testPhone, setTestPhone] = useState("");
   const [testSending, setTestSending] = useState(false);
+  const [delayMinutes, setDelayMinutes] = useState<number>(30);
 
   const statuses = statusesData?.statuses ?? [];
   const filtered = filterType === "all" ? statuses : statuses.filter((s) => s.type === filterType);
@@ -462,6 +465,7 @@ function RuleBuilder({ onSave, onCancel }: { onSave: () => void; onCancel: () =>
 
   // Auto-fill template when status chosen
   const DEFAULT_TEMPLATES: Record<string, string> = {
+    abandoned_checkout:  "Hi {customer_name}! 🛒 We noticed you left some items in your cart. Complete your purchase here: {checkout_url}\nTotal: {total_price}",
     order_placed:        "Hi {customer_name}! 🛒 Thank you for your order {order_name} worth {total}.\nProduct: {product_name}\nWe'll confirm it shortly!",
     payment_confirmed:   "Hi {customer_name}! 💰 Payment confirmed for order {order_name} ({total}).\nProduct: {product_name}\nWe're preparing it now.",
     order_shipped:       "Hi {customer_name}! 🚚 Your order {order_name} has been shipped!\nProduct: {product_name}\nCourier: {courier_name} | AWB: {tracking_id}\nTrack: {tracking_url}",
@@ -489,7 +493,17 @@ function RuleBuilder({ onSave, onCancel }: { onSave: () => void; onCancel: () =>
       return;
     }
     createRule.mutate(
-      { data: { trigger_type: selected?.type ?? "order", trigger_status: selectedStatus, message_template: message, send_image: sendImage, buttons: buttons.filter(b => b.body.trim()), footer: footer.trim() || null } },
+      {
+        data: {
+          trigger_type: selected?.type ?? "order",
+          trigger_status: selectedStatus,
+          message_template: message,
+          send_image: sendImage,
+          buttons: buttons.filter(b => b.body.trim()),
+          footer: footer.trim() || null,
+          delay_minutes: selectedStatus === "abandoned_checkout" ? delayMinutes : undefined,
+        }
+      },
       {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getListWhatsappRulesQueryKey() });
@@ -517,7 +531,7 @@ function RuleBuilder({ onSave, onCancel }: { onSave: () => void; onCancel: () =>
             </div>
             {/* Filter tabs */}
             <div className="flex gap-1 mb-3">
-              {["all", "order", "fulfillment", "shipping"].map((t) => (
+              {["all", "order", "fulfillment", "shipping", "abandoned_checkout"].map((t) => (
                 <button
                   key={t}
                   onClick={() => setFilterType(t)}
@@ -527,7 +541,7 @@ function RuleBuilder({ onSave, onCancel }: { onSave: () => void; onCancel: () =>
                       : "text-gray-500 border-gray-200 hover:border-gray-400"
                   }`}
                 >
-                  {t}
+                  {t.replace(/_/g, " ")}
                 </button>
               ))}
             </div>
@@ -580,6 +594,26 @@ function RuleBuilder({ onSave, onCancel }: { onSave: () => void; onCancel: () =>
                 ← Select a trigger first
               </div>
             )}
+            
+            {selectedStatus === "abandoned_checkout" && (
+              <div className="mb-3 p-3 bg-orange-50 rounded-lg border border-orange-200">
+                <label className="text-xs font-semibold text-orange-800 block mb-1">
+                  Delay Before Sending (Minutes)
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  value={delayMinutes}
+                  onChange={(e) => setDelayMinutes(Math.max(1, Number(e.target.value)))}
+                  className="w-full text-xs border border-orange-300 rounded px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-orange-300 bg-white"
+                  placeholder="e.g. 30"
+                />
+                <span className="text-[9px] text-orange-600 block mt-1 font-medium">
+                  Specify how many minutes to wait after the customer leaves their checkout.
+                </span>
+              </div>
+            )}
+
             <textarea
               value={message}
               onChange={(e) => setMessage(e.target.value)}
@@ -714,7 +748,10 @@ function RuleBuilder({ onSave, onCancel }: { onSave: () => void; onCancel: () =>
                     .replace(/\{store_name\}/g, "Your Store")
                     .replace(/\{product_name\}/g, "Black T-Shirt (L)")
                     .replace(/\{courier_name\}/g, "Delhivery")
-                    .replace(/\{tracking_id\}/g, "123456789012")}
+                    .replace(/\{tracking_id\}/g, "123456789012")
+                    .replace(/\{checkout_url\}/g, "https://store.myshopify.com/checkouts/ac/12345/recover")
+                    .replace(/\{total_price\}/g, "₹2,400")
+                    .replace(/\{items_summary\}/g, "Black T-Shirt (L) (x1)")}
                 </div>
                 {footer && <div className="mt-1 text-[9px] text-gray-400 italic">{footer}</div>}
                 {showButtonsPanel && buttons.filter(b => b.body.trim()).length > 0 && (
@@ -887,8 +924,13 @@ function RulesList() {
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-sm font-semibold text-gray-900">{rule.trigger_label}</span>
               <span className={`text-[10px] px-2 py-0.5 rounded-full border font-medium uppercase ${TYPE_COLOR[rule.trigger_type] || "bg-gray-100 text-gray-500 border-gray-200"}`}>
-                {rule.trigger_type}
+                {rule.trigger_type.replace(/_/g, " ")}
               </span>
+              {rule.trigger_type === "abandoned_checkout" && (
+                <span className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-orange-50 text-orange-700 border border-orange-200 font-medium">
+                  ⏳ {rule.delay_minutes ?? 0}m delay
+                </span>
+              )}
               {rule.send_image && (
                 <span className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-purple-50 text-purple-600 border border-purple-200 font-medium">
                   <ImageIcon className="w-2.5 h-2.5" /> Image

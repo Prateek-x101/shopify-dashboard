@@ -656,6 +656,8 @@ components:
             $ref: "#/components/schemas/WhatsAppButton"
         footer:
           type: ["string", "null"]
+        delay_minutes:
+          type: integer
         created_at:
           type: string
       required:
@@ -686,6 +688,8 @@ components:
             $ref: "#/components/schemas/WhatsAppButton"
         footer:
           type: ["string", "null"]
+        delay_minutes:
+          type: integer
       required:
         - trigger_type
         - trigger_status

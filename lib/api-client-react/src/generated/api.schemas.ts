@@ -159,6 +159,7 @@ export interface WhatsAppRule {
   buttons: WhatsAppButton[];
   /** @nullable */
   footer?: string | null;
+  delay_minutes?: number;
   created_at: string;
 }
 
@@ -170,6 +171,7 @@ export interface CreateWhatsAppRuleBody {
   buttons: WhatsAppButton[];
   /** @nullable */
   footer?: string | null;
+  delay_minutes?: number;
 }
 
 export interface WhatsAppRulesResponse {

@@ -33,7 +33,7 @@ interface ChatMessage {
   timestamp: string;
 }
 
-const messagesByOrder: Record<string, ChatMessage[]> = {};
+export const messagesByOrder: Record<string, ChatMessage[]> = {};
 let msgCounter = 1;
 
 // ── Phone number formatter for WhatsApp ──────────────────────────
@@ -54,6 +54,7 @@ interface Rule {
   send_image: boolean;
   buttons: WaButton[];
   footer?: string | null;
+  delay_minutes?: number;
   created_at: string;
 }
 
@@ -193,6 +194,7 @@ async function startWhatsAppClient(): Promise<void> {
 // ── All statuses (Shopify + Shiprocket-aligned) ───────────────────
 const SHOPIFY_STATUSES = [
   // ── Order statuses ──────────────────────────────────────────────
+  { id: "abandoned_checkout",    label: "Abandoned Checkout",       type: "abandoned_checkout", emoji: "🛒", description: "Customer abandoned checkout" },
   { id: "order_placed",          label: "Order Placed",             type: "order",       emoji: "🛒", description: "New order is placed by customer" },
   { id: "payment_pending",       label: "Payment Pending",          type: "order",       emoji: "⏳", description: "Payment not yet received" },
   { id: "payment_authorized",    label: "Payment Authorized",       type: "order",       emoji: "✅", description: "Payment authorized, not captured" },
@@ -373,7 +375,7 @@ router.post("/whatsapp/rules", (req, res) => {
   const parsed = CreateWhatsappRuleBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Invalid body" }); return; }
 
-  const { trigger_type, trigger_status, message_template, send_image, buttons, footer } = parsed.data;
+  const { trigger_type, trigger_status, message_template, send_image, buttons, footer, delay_minutes } = parsed.data;
   const status = SHOPIFY_STATUSES.find((s) => s.id === trigger_status);
   const rule: Rule = {
     id: String(ruleCounter++), trigger_type, trigger_status,
@@ -381,6 +383,7 @@ router.post("/whatsapp/rules", (req, res) => {
     message_template, enabled: true, send_image: send_image ?? false,
     buttons: (buttons ?? []) as WaButton[],
     footer: footer ?? null,
+    delay_minutes: delay_minutes ?? undefined,
     created_at: new Date().toISOString(),
   };
   rules.push(rule);
