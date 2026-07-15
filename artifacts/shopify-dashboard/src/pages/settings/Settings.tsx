@@ -20,6 +20,7 @@ import { toast } from "sonner";
 import {
   CheckCircle2, XCircle, Plus, Trash2, ToggleLeft, ToggleRight,
   Wifi, WifiOff, Loader2, Smartphone, RefreshCw, Zap, ImageIcon, Copy,
+  Clock,
 } from "lucide-react";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -531,7 +532,7 @@ function RuleBuilder({ onSave, onCancel }: { onSave: () => void; onCancel: () =>
             </div>
             {/* Filter tabs */}
             <div className="flex gap-1 mb-3">
-              {["all", "order", "fulfillment", "shipping", "abandoned_checkout"].map((t) => (
+              {["all", "order", "fulfillment", "shipping"].map((t) => (
                 <button
                   key={t}
                   onClick={() => setFilterType(t)}
@@ -541,7 +542,7 @@ function RuleBuilder({ onSave, onCancel }: { onSave: () => void; onCancel: () =>
                       : "text-gray-500 border-gray-200 hover:border-gray-400"
                   }`}
                 >
-                  {t.replace(/_/g, " ")}
+                  {t}
                 </button>
               ))}
             </div>
@@ -594,25 +595,7 @@ function RuleBuilder({ onSave, onCancel }: { onSave: () => void; onCancel: () =>
                 ← Select a trigger first
               </div>
             )}
-            
-            {selectedStatus === "abandoned_checkout" && (
-              <div className="mb-3 p-3 bg-orange-50 rounded-lg border border-orange-200">
-                <label className="text-xs font-semibold text-orange-800 block mb-1">
-                  Delay Before Sending (Minutes)
-                </label>
-                <input
-                  type="number"
-                  min={1}
-                  value={delayMinutes}
-                  onChange={(e) => setDelayMinutes(Math.max(1, Number(e.target.value)))}
-                  className="w-full text-xs border border-orange-300 rounded px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-orange-300 bg-white"
-                  placeholder="e.g. 30"
-                />
-                <span className="text-[9px] text-orange-600 block mt-1 font-medium">
-                  Specify how many minutes to wait after the customer leaves their checkout.
-                </span>
-              </div>
-            )}
+
 
             <textarea
               value={message}
@@ -874,7 +857,7 @@ function RulesList() {
   const deleteRule = useDeleteWhatsappRule();
   const toggleRule = useToggleWhatsappRule();
 
-  const rules = data?.rules ?? [];
+  const rules = (data?.rules ?? []).filter((r) => r.trigger_type !== "abandoned_checkout");
 
   function handleDelete(id: string) {
     deleteRule.mutate({ id }, {
@@ -1015,7 +998,295 @@ function WhatsAppTab() {
 
         <RulesList />
       </div>
+
+      <hr className="border-gray-200 my-4" />
+
+      {/* Dedicated Abandoned Checkout Section */}
+      <AbandonedCheckoutRecoveryFlow />
     </div>
+  );
+}
+
+/* ───────────────────────────────────────────────────────────────
+   Abandoned Checkout Recovery Flow Section
+─────────────────────────────────────────────────────────────── */
+function AbandonedCheckoutRecoveryFlow() {
+  const queryClient = useQueryClient();
+  const { data, isLoading } = useListWhatsappRules({ query: { queryKey: getListWhatsappRulesQueryKey() } });
+  const createRule = useCreateWhatsappRule();
+  const deleteRule = useDeleteWhatsappRule();
+  const toggleRule = useToggleWhatsappRule();
+
+  const [showForm, setShowForm] = useState(false);
+  const [delayVal, setDelayVal] = useState<number>(30);
+  const [delayUnit, setDelayUnit] = useState<"minutes" | "hours" | "days">("minutes");
+  const [message, setMessage] = useState("");
+  const [sendImage, setSendImage] = useState(false);
+  const [buttons, setButtons] = useState<{ id: string; body: string }[]>([]);
+  const [footer, setFooter] = useState("");
+  const [showButtonsPanel, setShowButtonsPanel] = useState(false);
+
+  const checkoutRules = (data?.rules ?? [])
+    .filter((r) => r.trigger_type === "abandoned_checkout")
+    .sort((a, b) => (a.delay_minutes ?? 0) - (b.delay_minutes ?? 0));
+
+  function handleDelete(id: string) {
+    deleteRule.mutate({ id }, {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListWhatsappRulesQueryKey() });
+        toast.success("Recovery step removed");
+      },
+    });
+  }
+
+  function handleToggle(id: string, enabled: boolean) {
+    toggleRule.mutate({ id, data: { enabled: !enabled } }, {
+      onSuccess: () => queryClient.invalidateQueries({ queryKey: getListWhatsappRulesQueryKey() }),
+    });
+  }
+
+  function handleSave() {
+    if (!message.trim()) {
+      toast.error("Please type a message template");
+      return;
+    }
+
+    // Convert delay to minutes
+    let delayMinutes = delayVal;
+    if (delayUnit === "hours") delayMinutes = delayVal * 60;
+    else if (delayUnit === "days") delayMinutes = delayVal * 1440;
+
+    createRule.mutate({
+      data: {
+        trigger_type: "abandoned_checkout",
+        trigger_status: "abandoned_checkout",
+        message_template: message,
+        send_image: sendImage,
+        buttons: buttons.filter(b => b.body.trim()),
+        footer: footer.trim() || null,
+        delay_minutes: delayMinutes,
+      }
+    }, {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListWhatsappRulesQueryKey() });
+        toast.success("Recovery step added!");
+        setShowForm(false);
+        // Reset form
+        setMessage("");
+        setDelayVal(30);
+        setDelayUnit("minutes");
+        setButtons([]);
+        setFooter("");
+        setShowButtonsPanel(false);
+      },
+      onError: () => toast.error("Failed to add recovery step"),
+    });
+  }
+
+  // Checkout specific variables
+  const CHECKOUT_VARS = ["{customer_name}", "{checkout_url}", "{total_price}", "{items_summary}"];
+
+  if (isLoading) return <div className="py-4 text-center text-gray-400 text-sm">Loading recovery flow…</div>;
+
+  return (
+    <Card className="border-orange-200 shadow-sm bg-orange-50/10">
+      <CardHeader className="pb-3 border-b border-orange-100 flex flex-row items-center justify-between">
+        <div>
+          <CardTitle className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+            <Clock className="w-4 h-4 text-orange-500" /> Abandoned Cart Recovery Flow
+          </CardTitle>
+          <CardDescription className="text-xs text-gray-500 mt-1">
+            Configure step-by-step WhatsApp reminders sent automatically to users who abandon their cart.
+          </CardDescription>
+        </div>
+        {!showForm && (
+          <Button
+            size="sm"
+            onClick={() => setShowForm(true)}
+            className="bg-orange-600 hover:bg-orange-700 text-white"
+          >
+            <Plus className="w-4 h-4 mr-1.5" /> Add Step
+          </Button>
+        )}
+      </CardHeader>
+      <CardContent className="pt-4">
+        {showForm && (
+          <div className="mb-6 p-4 bg-white border border-orange-200 rounded-xl space-y-4">
+            <div className="text-xs font-semibold text-orange-800 uppercase tracking-wide">
+              New Recovery Step
+            </div>
+            
+            {/* Delay Input */}
+            <div className="grid grid-cols-3 gap-2">
+              <div className="col-span-2">
+                <label className="text-xs font-medium text-gray-600 block mb-1">Send recovery reminder after</label>
+                <input
+                  type="number"
+                  min={1}
+                  value={delayVal}
+                  onChange={(e) => setDelayVal(Math.max(1, Number(e.target.value)))}
+                  className="w-full text-xs border border-gray-200 rounded px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-orange-500/20 bg-white"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-gray-600 block mb-1">Unit</label>
+                <select
+                  value={delayUnit}
+                  onChange={(e) => setDelayUnit(e.target.value as any)}
+                  className="w-full text-xs border border-gray-200 rounded px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-orange-500/20 bg-white"
+                >
+                  <option value="minutes">Minutes</option>
+                  <option value="hours">Hours</option>
+                  <option value="days">Days</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Message input */}
+            <div>
+              <label className="text-xs font-medium text-gray-600 block mb-1">Message Template</label>
+              <textarea
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                placeholder="Hi {customer_name}! We noticed you left {items_summary} in your cart. Complete your purchase here: {checkout_url}"
+                rows={4}
+                className="w-full text-xs border border-gray-200 rounded px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-orange-500/20 placeholder-gray-300"
+              />
+              {/* Variables */}
+              <div className="mt-1">
+                <div className="text-[10px] text-gray-400 mb-1">Click to insert:</div>
+                <div className="flex flex-wrap gap-1">
+                  {CHECKOUT_VARS.map((v) => (
+                    <button
+                      key={v}
+                      type="button"
+                      onClick={() => setMessage((m) => m + v)}
+                      className="text-[10px] px-2 py-0.5 bg-orange-50 text-orange-700 rounded border border-orange-200 hover:bg-orange-100 font-mono transition-colors"
+                    >
+                      {v}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Buttons Panel */}
+            <div className="flex items-center justify-between p-2 bg-gray-50 rounded border border-gray-200 text-xs">
+              <div className="flex items-center gap-1.5">
+                <Zap className="w-3.5 h-3.5 text-amber-500" />
+                <div>
+                  <div className="font-medium text-gray-700">Add quick-reply buttons</div>
+                  <div className="text-[10px] text-gray-400">Add up to 3 quick tap buttons</div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowButtonsPanel(!showButtonsPanel);
+                  if (!showButtonsPanel && buttons.length === 0) setButtons([{ id: "1", body: "" }]);
+                }}
+              >
+                {showButtonsPanel ? <ToggleRight className="w-6 h-6 text-amber-500" /> : <ToggleLeft className="w-6 h-6 text-gray-300" />}
+              </button>
+            </div>
+
+            {showButtonsPanel && (
+              <div className="p-3 bg-amber-50 rounded-lg border border-amber-200 space-y-2">
+                {buttons.map((btn, idx) => (
+                  <div key={idx} className="flex items-center gap-2">
+                    <span className="text-[10px] text-gray-400 w-4 shrink-0">{idx + 1}.</span>
+                    <input
+                      type="text"
+                      value={btn.body}
+                      maxLength={20}
+                      placeholder="Button text (e.g. Buy Now)"
+                      onChange={(e) => {
+                        const updated = [...buttons];
+                        updated[idx] = { ...updated[idx], body: e.target.value };
+                        setButtons(updated);
+                      }}
+                      className="flex-1 text-xs border border-amber-300 rounded px-2.5 py-1 bg-white"
+                    />
+                    <button type="button" onClick={() => setButtons(buttons.filter((_, i) => i !== idx))} className="text-gray-400 hover:text-red-500">
+                      <XCircle className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+                {buttons.length < 3 && (
+                  <button
+                    type="button"
+                    onClick={() => setButtons([...buttons, { id: String(buttons.length + 1), body: "" }])}
+                    className="text-[10px] text-amber-600 hover:text-amber-800 flex items-center gap-1 font-medium"
+                  >
+                    <Plus className="w-3 h-3" /> Add button
+                  </button>
+                )}
+                <div className="mt-2">
+                  <div className="text-[10px] text-gray-500 mb-1">Footer text (optional)</div>
+                  <input
+                    type="text"
+                    value={footer}
+                    maxLength={60}
+                    placeholder="e.g. Reply STOP to unsubscribe"
+                    onChange={(e) => setFooter(e.target.value)}
+                    className="w-full text-xs border border-amber-300 rounded px-2.5 py-1 bg-white"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="flex justify-end gap-2 pt-2">
+              <Button type="button" variant="outline" size="sm" onClick={() => setShowForm(false)}>Cancel</Button>
+              <Button type="button" size="sm" onClick={handleSave} className="bg-orange-600 hover:bg-orange-700 text-white">Save Step</Button>
+            </div>
+          </div>
+        )}
+
+        {checkoutRules.length === 0 ? (
+          <div className="py-8 text-center text-gray-400 text-xs border border-dashed border-gray-200 rounded-xl bg-white">
+            No recovery steps configured. Click "Add Step" to build your recovery flow sequence.
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {checkoutRules.map((rule, index) => {
+              const delay = rule.delay_minutes ?? 0;
+              let delayText = `${delay} minute(s)`;
+              if (delay >= 1440 && delay % 1440 === 0) delayText = `${delay / 1440} day(s)`;
+              else if (delay >= 60 && delay % 60 === 0) delayText = `${delay / 60} hour(s)`;
+
+              return (
+                <div key={rule.id} className={`flex items-start gap-3 p-3.5 rounded-xl border bg-white ${rule.enabled ? "border-gray-200" : "border-gray-100 opacity-60"}`}>
+                  <button onClick={() => handleToggle(rule.id, rule.enabled)} className="mt-0.5 shrink-0 text-gray-400 hover:text-orange-600">
+                    {rule.enabled ? <ToggleRight className="w-5 h-5 text-orange-500" /> : <ToggleLeft className="w-5 h-5" />}
+                  </button>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <span className="text-xs font-semibold text-gray-900 font-sans">
+                        Step {index + 1}: Send after {delayText}
+                      </span>
+                      <div className="flex gap-1.5 items-center">
+                        {rule.buttons && rule.buttons.length > 0 && (
+                          <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200 font-medium">
+                            {rule.buttons.length} button(s)
+                          </span>
+                        )}
+                        <button onClick={() => handleDelete(rule.id)} className="text-gray-400 hover:text-red-500 transition-colors p-1" title="Delete step">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="mt-1 text-xs text-gray-600 bg-gray-50 p-2 rounded border border-gray-100 font-mono whitespace-pre-wrap">
+                      {rule.message_template}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
