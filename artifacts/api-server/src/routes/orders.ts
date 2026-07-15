@@ -67,15 +67,27 @@ router.get("/orders", async (req, res) => {
   const { limit = 50, page_info, status, financial_status, fulfillment_status, query } = parsed.data;
 
   const params = new URLSearchParams();
-  if (page_info) {
+  if (page_info && page_info !== "null" && page_info !== "undefined") {
     params.set("page_info", page_info);
     params.set("limit", String(limit));
   } else {
     params.set("limit", String(limit));
-    params.set("status", status || "any");
-    if (financial_status) params.set("financial_status", financial_status);
-    if (fulfillment_status) params.set("fulfillment_status", fulfillment_status);
-    if (query) params.set("query", query);
+    
+    let activeStatus = "any";
+    if (status && status !== "null" && status !== "undefined") {
+      activeStatus = status;
+    }
+    params.set("status", activeStatus);
+
+    if (financial_status && financial_status !== "null" && financial_status !== "undefined") {
+      params.set("financial_status", financial_status);
+    }
+    if (fulfillment_status && fulfillment_status !== "null" && fulfillment_status !== "undefined") {
+      params.set("fulfillment_status", fulfillment_status);
+    }
+    if (query && query !== "null" && query !== "undefined") {
+      params.set("query", query);
+    }
   }
 
   const shopifyRes = await fetch(shopifyUrl(`/orders.json?${params}`), {

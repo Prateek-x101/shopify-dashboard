@@ -100,19 +100,47 @@ export default function Dashboard() {
   const [prevCursors, setPrevCursors] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
 
+  const [statusFilter, setStatusFilter] = useState<string>("any");
+  const [financialFilter, setFinancialFilter] = useState<string | undefined>(undefined);
+  const [fulfillmentFilter, setFulfillmentFilter] = useState<string | undefined>(undefined);
+  const [searchVal, setSearchVal] = useState("");
+  const [searchQuery, setSearchQuery] = useState<string | undefined>(undefined);
+
   const { data: summary, isLoading: isLoadingSummary } = useGetOrdersSummary({
     query: { queryKey: getGetOrdersSummaryQueryKey() },
   });
 
+  const queryParams = cursor
+    ? { page_info: cursor }
+    : {
+        status: statusFilter,
+        financial_status: financialFilter,
+        fulfillment_status: fulfillmentFilter,
+        query: searchQuery,
+      };
+
   const { data: ordersResponse, isLoading: isLoadingOrders } = useListOrders(
-    cursor ? { page_info: cursor } : {},
-    { query: { queryKey: getListOrdersQueryKey(cursor ? { page_info: cursor } : {}) } }
+    queryParams,
+    { query: { queryKey: getListOrdersQueryKey(queryParams) } }
   );
 
   const { data: waStatus } = useGetWhatsappStatus({
     query: { queryKey: getGetWhatsappStatusQueryKey() },
   });
   const waConnected = waStatus?.connected === true;
+
+  function applyFilter(
+    status: string,
+    financial: string | undefined,
+    fulfillment: string | undefined
+  ) {
+    setCursor(undefined);
+    setPrevCursors([]);
+    setCurrentPage(1);
+    setStatusFilter(status);
+    setFinancialFilter(financial);
+    setFulfillmentFilter(fulfillment);
+  }
 
   // Extract order names from current page for Shiprocket lookup
   const orderNames = useMemo(
@@ -195,12 +223,71 @@ export default function Dashboard() {
 
       <Card className="shadow-sm border-gray-200 overflow-hidden">
         <div className="p-2 border-b border-gray-200 flex gap-2 bg-white">
-          <Button variant="ghost" size="sm" className="bg-gray-100 text-gray-900 font-medium">All</Button>
-          <Button variant="ghost" size="sm" className="text-gray-500 hover:text-gray-900">Unfulfilled</Button>
-          <Button variant="ghost" size="sm" className="text-gray-500 hover:text-gray-900">Unpaid</Button>
-          <Button variant="ghost" size="sm" className="text-gray-500 hover:text-gray-900">Open</Button>
-          <Button variant="ghost" size="sm" className="text-gray-500 hover:text-gray-900">Closed</Button>
-          <Button variant="ghost" size="icon" className="text-gray-500 hover:text-gray-900 w-8"><Plus className="w-4 h-4"/></Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => applyFilter("any", undefined, undefined)}
+            className={cn(
+              "font-medium",
+              statusFilter === "any" && !financialFilter && !fulfillmentFilter
+                ? "bg-gray-100 text-gray-900"
+                : "text-gray-500 hover:text-gray-900"
+            )}
+          >
+            All
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => applyFilter("any", undefined, "unfulfilled")}
+            className={cn(
+              "font-medium",
+              fulfillmentFilter === "unfulfilled"
+                ? "bg-gray-100 text-gray-900"
+                : "text-gray-500 hover:text-gray-900"
+            )}
+          >
+            Unfulfilled
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => applyFilter("any", "pending", undefined)}
+            className={cn(
+              "font-medium",
+              financialFilter === "pending"
+                ? "bg-gray-100 text-gray-900"
+                : "text-gray-500 hover:text-gray-900"
+            )}
+          >
+            Unpaid
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => applyFilter("open", undefined, undefined)}
+            className={cn(
+              "font-medium",
+              statusFilter === "open"
+                ? "bg-gray-100 text-gray-900"
+                : "text-gray-500 hover:text-gray-900"
+            )}
+          >
+            Open
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => applyFilter("closed", undefined, undefined)}
+            className={cn(
+              "font-medium",
+              statusFilter === "closed"
+                ? "bg-gray-100 text-gray-900"
+                : "text-gray-500 hover:text-gray-900"
+            )}
+          >
+            Closed (Archived)
+          </Button>
           <div className="ml-auto flex items-center gap-2 pr-1">
             {isFetchingSR && <span className="text-[11px] text-gray-400 flex items-center gap-1"><RefreshCw className="w-3 h-3 animate-spin" /> Syncing delivery…</span>}
             <button onClick={() => refetchSR()} title="Refresh delivery status" className="text-gray-400 hover:text-gray-600 transition-colors">
@@ -212,7 +299,20 @@ export default function Dashboard() {
         <div className="p-3 border-b border-gray-200 flex gap-2 bg-white">
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
-            <Input placeholder="Search orders" className="pl-9 h-9 bg-gray-50 border-gray-200 hover:bg-gray-100 focus:bg-white" />
+            <Input
+              placeholder="Search orders (press Enter)"
+              value={searchVal}
+              onChange={(e) => setSearchVal(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  setCursor(undefined);
+                  setPrevCursors([]);
+                  setCurrentPage(1);
+                  setSearchQuery(searchVal.trim() || undefined);
+                }
+              }}
+              className="pl-9 h-9 bg-gray-50 border-gray-200 hover:bg-gray-100 focus:bg-white"
+            />
           </div>
           <Button variant="outline" size="sm" className="h-9"><Filter className="w-4 h-4 mr-2"/> Filter</Button>
         </div>
