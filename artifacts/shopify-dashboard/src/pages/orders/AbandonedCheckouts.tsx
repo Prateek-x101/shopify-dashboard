@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import {
   useGetAbandonedCheckouts,
@@ -29,6 +30,7 @@ import {
 } from "lucide-react";
 
 export default function AbandonedCheckouts() {
+  const [, setLocation] = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
   const [sourceFilter, setSourceFilter] = useState<"all" | "shopify" | "shiprocket">("all");
 
@@ -243,7 +245,11 @@ export default function AbandonedCheckouts() {
                       : "Anonymous Customer";
 
                     return (
-                      <tr key={c.id} className="hover:bg-gray-50/40 transition-colors">
+                      <tr
+                        key={c.id}
+                        className="hover:bg-gray-50/40 transition-colors cursor-pointer"
+                        onClick={() => setLocation(`/abandoned-checkouts/${c.id}`)}
+                      >
                         {/* ID */}
                         <td className="py-4 px-4 font-mono font-medium text-gray-700">
                           {c.name}
@@ -304,7 +310,7 @@ export default function AbandonedCheckouts() {
                         </td>
 
                         {/* Recovery actions */}
-                        <td className="py-4 px-4 text-right">
+                        <td className="py-4 px-4 text-right" onClick={(e) => e.stopPropagation()}>
                           <div className="flex items-center justify-end gap-1.5">
                             {c.abandoned_checkout_url ? (
                               <>

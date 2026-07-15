@@ -6,6 +6,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import Dashboard from "@/pages/orders/Dashboard";
 import OrderDetail from "@/pages/orders/OrderDetail";
 import AbandonedCheckouts from "@/pages/orders/AbandonedCheckouts";
+import AbandonedCheckoutDetail from "@/pages/orders/AbandonedCheckoutDetail";
 import SettingsPage from "@/pages/settings/Settings";
 import NotFound from "@/pages/not-found";
 
@@ -19,6 +20,7 @@ function Router() {
         <Route path="/orders/:id" component={OrderDetail} />
         <Route path="/settings" component={SettingsPage} />
         <Route path="/abandoned-checkouts" component={AbandonedCheckouts} />
+        <Route path="/abandoned-checkouts/:id" component={AbandonedCheckoutDetail} />
         <Route component={NotFound} />
       </Switch>
     </AppLayout>

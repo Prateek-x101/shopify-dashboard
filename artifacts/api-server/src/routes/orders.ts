@@ -67,12 +67,16 @@ router.get("/orders", async (req, res) => {
   const { limit = 50, page_info, status, financial_status, fulfillment_status, query } = parsed.data;
 
   const params = new URLSearchParams();
-  params.set("limit", String(limit));
-  if (page_info) params.set("page_info", page_info);
-  if (status) params.set("status", status);
-  if (financial_status) params.set("financial_status", financial_status);
-  if (fulfillment_status) params.set("fulfillment_status", fulfillment_status);
-  if (query) params.set("query", query);
+  if (page_info) {
+    params.set("page_info", page_info);
+    params.set("limit", String(limit));
+  } else {
+    params.set("limit", String(limit));
+    params.set("status", status || "any");
+    if (financial_status) params.set("financial_status", financial_status);
+    if (fulfillment_status) params.set("fulfillment_status", fulfillment_status);
+    if (query) params.set("query", query);
+  }
 
   const shopifyRes = await fetch(shopifyUrl(`/orders.json?${params}`), {
     headers: {
