@@ -19,7 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {
   CheckCircle2, XCircle, Plus, Trash2, ToggleLeft, ToggleRight,
-  Wifi, WifiOff, Loader2, Smartphone, RefreshCw, Zap, ImageIcon,
+  Wifi, WifiOff, Loader2, Smartphone, RefreshCw, Zap, ImageIcon, Copy,
 } from "lucide-react";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -131,6 +131,58 @@ function ShiprocketStatusCard() {
             )}
           </>
         )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function AbandonedCheckoutWebhookCard() {
+  const [copied, setCopied] = useState(false);
+  const localUrl = `${window.location.protocol}//${window.location.hostname}:3000/api/webhooks/abandoned-cart`;
+
+  const copyUrl = () => {
+    navigator.clipboard.writeText(localUrl);
+    setCopied(true);
+    toast.success("Webhook URL copied to clipboard!");
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <Card className="shadow-sm border-gray-200 max-w-xl">
+      <CardHeader className="pb-3 border-b border-gray-100">
+        <CardTitle className="text-base">Abandoned Cart Webhook Setup</CardTitle>
+        <CardDescription>
+          Configure Shiprocket / Fastr Checkout to send abandoned cart webhooks to your dashboard.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="pt-4 space-y-4 text-sm">
+        <div className="space-y-1.5">
+          <label className="text-xs font-semibold text-gray-700">Your Webhook URL (Localhost):</label>
+          <div className="flex gap-2">
+            <Input readOnly value={localUrl} className="bg-gray-50 border-gray-200 text-xs font-mono h-9" />
+            <Button variant="outline" size="sm" onClick={copyUrl} className="h-9">
+              {copied ? <CheckCircle2 className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
+            </Button>
+          </div>
+        </div>
+
+        <div className="space-y-2 bg-gray-50 rounded-lg p-3 text-xs text-gray-600 border border-gray-100 leading-relaxed">
+          <p className="font-semibold text-gray-700 mb-1">How to configure in Shiprocket / Fastr:</p>
+          <ol className="list-decimal pl-4 space-y-1">
+            <li>
+              Expose your backend to the internet by running: 
+              <code className="bg-gray-200 px-1 py-0.5 rounded font-mono ml-1">ngrok http 3000</code>
+            </li>
+            <li>
+              Replace the <code className="font-mono">localhost:3000</code> in the URL above with your public ngrok URL.
+              <br />
+              *(e.g., <code className="font-mono">https://xxxx.ngrok-free.app/api/webhooks/abandoned-cart</code>)*
+            </li>
+            <li>
+              Go to <strong>Fastr Settings &rarr; Webhooks</strong>, select Webhook Type <strong>"Abandon Cart"</strong>, set the service provider to <strong>"Custom"</strong>, and paste the URL.
+            </li>
+          </ol>
+        </div>
       </CardContent>
     </Card>
   );
@@ -248,6 +300,7 @@ function GeneralTab() {
       </Card>
 
       <ShiprocketStatusCard />
+      <AbandonedCheckoutWebhookCard />
     </div>
   );
 }
