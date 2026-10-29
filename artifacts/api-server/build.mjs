@@ -100,6 +100,12 @@ async function buildAll() {
       "puppeteer",
       "puppeteer-core",
       "electron",
+      "whatsapp-web.js",
+      "baileys",
+      "readable-stream",
+      "@electric-sql/pglite",
+      "imapflow",
+      "mailparser",
     ],
     sourcemap: "linked",
     plugins: [

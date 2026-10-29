@@ -13,50 +13,12 @@ export function findWorkspaceRoot(startDir: string): string {
 }
 
 export const WORKSPACE_ROOT = findWorkspaceRoot(__dirname);
-const SETTINGS_FILE = path.join(WORKSPACE_ROOT, "settings.json");
 
-interface Config {
-  storeUrl: string;
-  shopifyAccessToken: string;
-  shiprocketEmail: string;
-  shiprocketPassword: string;
-  emailUser: string;
-  emailPass: string;
-}
+// Everything local and private (database, WhatsApp Web sessions) lives here.
+export const DATA_DIR = process.env.DATA_DIR ?? path.join(WORKSPACE_ROOT, "data");
+fs.mkdirSync(DATA_DIR, { recursive: true });
 
-const defaults: Config = {
-  storeUrl: process.env.SHOPIFY_STORE_URL ?? "fccevc-p1.myshopify.com",
-  shopifyAccessToken: process.env.SHOPIFY_CUSTOM_APP_ACCESS_TOKEN ?? process.env.SHOPIFY_ACCESS_TOKEN ?? "",
-  shiprocketEmail: process.env.SHIPROCKET_EMAIL ?? "",
-  shiprocketPassword: process.env.SHIPROCKET_PASSWORD ?? "",
-  emailUser: process.env.EMAIL_USER ?? "",
-  emailPass: process.env.EMAIL_PASS ?? "",
-};
+export const MIGRATIONS_DIR = path.join(WORKSPACE_ROOT, "lib/db/drizzle");
+export const FRONTEND_DIR = path.join(WORKSPACE_ROOT, "artifacts/shopify-dashboard/dist/public");
 
-let saved: Partial<Config> = {};
-try {
-  if (fs.existsSync(SETTINGS_FILE)) {
-    const raw = fs.readFileSync(SETTINGS_FILE, "utf8");
-    saved = JSON.parse(raw);
-  }
-} catch (err) {
-  // Ignore or log loading failure
-}
-
-export const config: Config = {
-  storeUrl: saved.storeUrl ?? defaults.storeUrl,
-  shopifyAccessToken: saved.shopifyAccessToken ?? defaults.shopifyAccessToken,
-  shiprocketEmail: saved.shiprocketEmail ?? defaults.shiprocketEmail,
-  shiprocketPassword: saved.shiprocketPassword ?? defaults.shiprocketPassword,
-  emailUser: saved.emailUser ?? defaults.emailUser,
-  emailPass: saved.emailPass ?? defaults.emailPass,
-};
-
-export function saveConfig(updates: Partial<Config>) {
-  Object.assign(config, updates);
-  try {
-    fs.writeFileSync(SETTINGS_FILE, JSON.stringify(config, null, 2), "utf8");
-  } catch (err) {
-    console.error("Failed to save settings.json:", err);
-  }
-}
+export const SHOPIFY_API_VERSION = "2025-07";

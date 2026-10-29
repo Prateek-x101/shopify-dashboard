@@ -153,4 +153,7 @@ allowBuilds:
   esbuild: true
   msw: true
   puppeteer: true
+  # baileys only runs a Node version check; protobufjs only a version notice
+  baileys: false
+  protobufjs: false
   unrs-resolver: true

@@ -3,6 +3,10 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
+import { createRequire } from "module";
+
+const require = createRequire(import.meta.url);
+const reactRemoveScrollPath = require.resolve("react-remove-scroll");
 
 const rawPort = process.env.PORT;
 
@@ -50,6 +54,7 @@ export default defineConfig({
     alias: {
       "@": path.resolve(import.meta.dirname, "src"),
       "@assets": path.resolve(import.meta.dirname, "..", "..", "attached_assets"),
+      "react-remove-scroll": reactRemoveScrollPath,
     },
     dedupe: ["react", "react-dom"],
   },
@@ -63,19 +68,14 @@ export default defineConfig({
     strictPort: true,
     host: "0.0.0.0",
     allowedHosts: true,
-    fs: {
-      strict: true,
+    hmr: {
+      clientPort: port,
     },
     proxy: {
       "/api": {
-        target: "http://localhost:3000",
+        target: `http://localhost:${process.env.API_PORT ?? 5000}`,
         changeOrigin: true,
       },
     },
-  },
-  preview: {
-    port,
-    host: "0.0.0.0",
-    allowedHosts: true,
   },
 });

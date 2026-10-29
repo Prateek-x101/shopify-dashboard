@@ -55,3 +55,7 @@ whatsapp_rules.json
 .wwebjs_auth/
 .wwebjs_cache/
 
+.trash-old-backend/
+
+# local database + sessions
+/data/

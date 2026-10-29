@@ -1,14 +1,9 @@
 import { defineConfig } from "drizzle-kit";
-import path from "path";
 
-if (!process.env.DATABASE_URL) {
-  throw new Error("DATABASE_URL, ensure the database is provisioned");
-}
-
+// Migrations are generated offline (`pnpm --filter @workspace/db run generate`)
+// and applied automatically by the API server on startup.
 export default defineConfig({
-  schema: path.join(__dirname, "./src/schema/index.ts"),
+  schema: "./src/schema/*.ts",
+  out: "./drizzle",
   dialect: "postgresql",
-  dbCredentials: {
-    url: process.env.DATABASE_URL,
-  },
 });

@@ -11,6 +11,7 @@
   "private": true,
   "devDependencies": {
     "prettier": "^3.8.3",
+    "react-remove-scroll": "^2.7.2",
     "typescript": "~5.9.3"
   }
 }
